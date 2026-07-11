@@ -5,10 +5,12 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
-import { Bell, Calendar, ChevronDown, Filter } from "lucide-react";
+import { Bell, Calendar, ChevronDown, Filter, LogOut } from "lucide-react";
+import { useLogout } from "@/hooks/use-logout";
 
 interface HeaderConfig {
   title: string;
@@ -41,6 +43,49 @@ export function usePageHeader(config: HeaderConfig) {
     setConfig?.({ title, subtitle, notificationCount, userInitial });
     return () => setConfig?.(DEFAULT_CONFIG);
   }, [setConfig, title, subtitle, notificationCount, userInitial]);
+}
+
+function UserMenu({ userInitial }: { userInitial?: string }) {
+  const [open, setOpen] = useState(false);
+  const { logout, loggingOut } = useLogout();
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    function handleClickOutside(event: MouseEvent) {
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+        setOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [open]);
+
+  return (
+    <div className="relative" ref={menuRef}>
+      <button
+        onClick={() => setOpen((v) => !v)}
+        aria-label="Account menu"
+        aria-expanded={open}
+        className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-blue-700 text-sm font-semibold text-white transition-opacity hover:opacity-90"
+      >
+        {userInitial ?? "D"}
+      </button>
+
+      {open && (
+        <div className="absolute right-0 top-11 z-50 w-40 overflow-hidden rounded-lg border border-slate-800 bg-navy-dark shadow-lg">
+          <button
+            onClick={logout}
+            disabled={loggingOut}
+            className="flex w-full items-center gap-2 px-3 py-2 text-sm text-slate-200 transition-colors hover:bg-slate-800 disabled:opacity-60"
+          >
+            <LogOut className="h-4 w-4 text-slate-400" />
+            {loggingOut ? "Logging out..." : "Log out"}
+          </button>
+        </div>
+      )}
+    </div>
+  );
 }
 
 export function TopBar() {
@@ -108,9 +153,7 @@ export function TopBar() {
             )}
           </button>
 
-          <div className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-blue-700 text-sm font-semibold text-white">
-            {config.userInitial ?? "D"}
-          </div>
+          <UserMenu userInitial={config.userInitial} />
         </div>
       </div>
     </div>

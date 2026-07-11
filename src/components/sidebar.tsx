@@ -8,6 +8,7 @@ import {
   Bot,
   Brain,
   LayoutGrid,
+  LogOut,
   Menu,
   MessageCircle,
   Package,
@@ -26,6 +27,7 @@ import {
 import { cn } from "@/lib/utils";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { useLogout } from "@/hooks/use-logout";
 
 type NavItem = {
   href: string;
@@ -90,6 +92,7 @@ export function Sidebar() {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
+  const { logout, loggingOut } = useLogout();
 
   useEffect(() => {
     const loadUnread = () => {
@@ -146,7 +149,15 @@ export function Sidebar() {
       </nav>
 
       <div className="border-t border-slate-800/60 p-4">
-        <p className="text-xs text-slate-500">CEO DESK · Dealership OS</p>
+        <p className="mb-3 text-xs text-slate-500">CEO DESK · Dealership OS</p>
+        <button
+          onClick={logout}
+          disabled={loggingOut}
+          className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-slate-400 transition-colors hover:bg-slate-800/60 hover:text-white disabled:opacity-60"
+        >
+          <LogOut className="h-[18px] w-[18px]" />
+          {loggingOut ? "Logging out..." : "Log out"}
+        </button>
       </div>
     </>
   );
