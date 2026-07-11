@@ -12,7 +12,7 @@ import {
 } from "@/lib/vehicle-upload-paths";
 
 async function uploadToSupabase(
-  client: ReturnType<typeof createServerClient>,
+  client: Awaited<ReturnType<typeof createServerClient>>,
   objectPath: string,
   buffer: Buffer,
   contentType: string
@@ -39,7 +39,7 @@ export async function uploadVehicleImage(
   ext: string
 ): Promise<{ url: string; storage: "supabase" | "local" }> {
   const objectPath = `${randomUUID()}.${ext}`;
-  const supabase = createServerClient();
+  const supabase = await createServerClient();
 
   let { error: uploadError } = await uploadToSupabase(
     supabase,

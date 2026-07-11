@@ -42,6 +42,7 @@ export interface LogicRule {
 export interface VehicleRuleContext {
   daysInStock: number;
   netProfit: number;
+  roi: number;
   leadCount: number;
   oldestLeadAgeMinutes: number | null;
   compCount: number;

@@ -12,7 +12,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const supabase = createServerClient();
+    const supabase = await createServerClient();
     const { error } = await supabase
       .from("messages")
       .update({ read: true })

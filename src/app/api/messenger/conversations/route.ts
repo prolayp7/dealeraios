@@ -4,7 +4,7 @@ import type { ConversationSummary, Customer, Message } from "@/lib/types";
 
 export async function GET() {
   try {
-    const supabase = createServerClient();
+    const supabase = await createServerClient();
 
     const { data: customers, error } = await supabase
       .from("customers")

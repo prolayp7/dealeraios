@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase/server";
+import { getSessionDealership } from "@/lib/supabase/session";
 import { enrichVehicle, enrichVehicleRecord } from "@/lib/vehicle-logic";
 import { attachStoredImageUrls } from "@/lib/vehicle-image-store";
 import {
@@ -10,7 +11,7 @@ import type { VehicleFormData } from "@/lib/types";
 
 export async function GET() {
   try {
-    const supabase = createServerClient();
+    const supabase = await createServerClient();
     const { data, error } = await supabase
       .from("vehicles")
       .select("*")
@@ -37,14 +38,23 @@ export async function POST(request: Request) {
     const { imageUrls, coverUrl } = extractVehicleImages(body);
     const enriched = enrichVehicle({ ...body, id: vehicleId });
 
-    const supabase = createServerClient();
+    const supabase = await createServerClient();
+    const session = await getSessionDealership(supabase);
+    if (!session) {
+      return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
+    }
+
     const { data, error } = await saveVehicleWithOptionalImage({
       vehicleId,
       enriched,
       imageUrls,
       coverUrl,
       save: async (payload) =>
-        supabase.from("vehicles").insert(payload).select().single(),
+        supabase
+          .from("vehicles")
+          .insert({ ...payload, dealership_id: session.dealershipId })
+          .select()
+          .single(),
     });
 
     if (error) throw error;

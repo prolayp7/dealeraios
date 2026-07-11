@@ -4,7 +4,7 @@ import { createServerClient } from "@/lib/supabase/server";
 export async function GET(_request: Request, props: { params: Promise<{ id: string }> }) {
   const params = await props.params;
   try {
-    const supabase = createServerClient();
+    const supabase = await createServerClient();
 
     const { data: customer, error: customerError } = await supabase
       .from("customers")
@@ -46,7 +46,7 @@ export async function PATCH(request: Request, props: { params: Promise<{ id: str
   const params = await props.params;
   try {
     const body = await request.json();
-    const supabase = createServerClient();
+    const supabase = await createServerClient();
 
     const { data, error } = await supabase
       .from("customers")

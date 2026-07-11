@@ -1,10 +1,15 @@
 import { NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase/server";
+import { getSessionDealership } from "@/lib/supabase/session";
 
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const supabase = createServerClient();
+    const supabase = await createServerClient();
+    const session = await getSessionDealership(supabase);
+    if (!session) {
+      return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
+    }
 
     if (body.customer_id) {
       const { data, error } = await supabase
@@ -21,6 +26,7 @@ export async function POST(request: Request) {
     const { data, error } = await supabase
       .from("customers")
       .insert({
+        dealership_id: session.dealershipId,
         name: body.name ?? "Unknown",
         phone: body.phone ?? null,
         email: body.email ?? null,

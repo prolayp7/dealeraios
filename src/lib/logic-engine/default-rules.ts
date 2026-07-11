@@ -4,9 +4,9 @@ export const DEFAULT_LOGIC_RULES: LogicRule[] = [
   {
     id: "money-trap",
     name: "Money Trap",
-    summary: "Days In Stock > 45 → flag as Money Trap",
-    condition: "Days In Stock > 45",
-    action: "Flag as Money Trap",
+    summary: "Days In Stock > 60 AND Expected ROI < 10% → flag as Money Trap",
+    condition: "Days In Stock > 60 AND ROI < 10%",
+    action: "Flag as Money Trap — Reduce Price / Send to Auction / Wholesale / Hold",
     category: "inventory",
     active: true,
     builtIn: true,

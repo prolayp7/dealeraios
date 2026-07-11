@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase/server";
+import { getSessionDealership } from "@/lib/supabase/session";
 import { sendMessengerMessage, GraphApiError } from "@/lib/messenger/graph-api";
 
 export async function POST(request: Request) {
@@ -13,7 +14,11 @@ export async function POST(request: Request) {
       );
     }
 
-    const supabase = createServerClient();
+    const supabase = await createServerClient();
+    const session = await getSessionDealership(supabase);
+    if (!session) {
+      return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
+    }
     const { data: customer, error: customerError } = await supabase
       .from("customers")
       .select("id, fb_messenger_id, name")
@@ -40,6 +45,7 @@ export async function POST(request: Request) {
     const { data: savedMessage, error: saveError } = await supabase
       .from("messages")
       .insert({
+        dealership_id: session.dealershipId,
         customer_id,
         message: message.trim(),
         direction: "outbound",

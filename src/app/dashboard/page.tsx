@@ -6,16 +6,20 @@ import { MessageCircle } from "lucide-react";
 import { usePageHeader } from "@/components/header";
 import { InventoryCard } from "@/components/inventory/inventory-card";
 import { InventoryFilterTabs } from "@/components/inventory/inventory-filter-tabs";
+import { InventoryAgingWidget } from "@/components/inventory-aging-widget";
 import { KpiCard } from "@/components/kpi-card";
 import { MissionBanner } from "@/components/mission-banner";
+import { MoneyTrapWidget } from "@/components/money-trap-widget";
+import { RevenueTrendWidget } from "@/components/revenue-trend-widget";
 import { Card, CardContent } from "@/components/ui/card";
+import { computeAvailableCash } from "@/lib/available-cash";
 import {
   countByFilter,
   matchesFilter,
   type FilterTab,
 } from "@/lib/inventory-filters";
 import type { AiPriority, Vehicle } from "@/lib/types";
-import { formatCurrency, formatPercent } from "@/lib/utils";
+import { formatCurrency, formatNumber, formatPercent } from "@/lib/utils";
 
 const PRIORITY_ORDER: AiPriority[] = [
   "URGENT",
@@ -80,6 +84,17 @@ export default function DashboardPage() {
       ? vehicles.reduce((sum, v) => sum + (v.roi ?? 0), 0) / vehicles.length
       : 0;
 
+  const availableCash = useMemo(() => computeAvailableCash(vehicles), [vehicles]);
+  const activeListings = vehicles.filter((v) => v.listed_online).length;
+  const inactiveListings = totalVehicles - activeListings;
+  const avgDaysInStock =
+    totalVehicles > 0
+      ? Math.round(
+          vehicles.reduce((sum, v) => sum + (v.days_in_stock ?? 0), 0) /
+            totalVehicles
+        )
+      : 0;
+
   const priorityCounts = PRIORITY_ORDER.reduce(
     (acc, p) => {
       acc[p] = vehicles.filter((v) => v.ai_priority === p).length;
@@ -137,15 +152,34 @@ export default function DashboardPage() {
         ]}
       />
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
-        <KpiCard title="Total Vehicles" value={String(totalVehicles)} />
-        <KpiCard title="Total Invested" value={formatCurrency(totalInvested)} />
-        <KpiCard title="Retail Value" value={formatCurrency(retailValue)} />
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <KpiCard
+          title="Available Cash"
+          value={formatCurrency(availableCash)}
+          subtitle="Auto-calculated from purchases, repairs & sales"
+        />
+        <KpiCard title="Inventory Value" value={formatCurrency(retailValue)} />
+        <KpiCard title="Inventory Cost" value={formatCurrency(totalInvested)} />
         <KpiCard
           title="Expected Profit"
           value={formatCurrency(expectedProfit)}
         />
+      </div>
+
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <KpiCard title="Total Vehicles" value={String(totalVehicles)} />
         <KpiCard title="Average ROI" value={formatPercent(avgRoi)} />
+        <KpiCard
+          title="Active / Inactive Listings"
+          value={`${formatNumber(activeListings)} / ${formatNumber(inactiveListings)}`}
+        />
+        <KpiCard title="Avg. Days in Stock" value={String(avgDaysInStock)} />
+      </div>
+
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+        <InventoryAgingWidget vehicles={vehicles} />
+        <MoneyTrapWidget vehicles={vehicles} />
+        <RevenueTrendWidget vehicles={vehicles} />
       </div>
 
       <Link href="/messenger">

@@ -16,7 +16,7 @@ interface PublishRequestBody {
 }
 
 export async function POST(request: Request) {
-  const supabase = createServerClient();
+  const supabase = await createServerClient();
   let vehicleId: string | undefined;
 
   try {

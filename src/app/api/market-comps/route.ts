@@ -1,12 +1,13 @@
 import { NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase/server";
+import { getSessionDealership } from "@/lib/supabase/session";
 
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
     const vehicleId = searchParams.get("vehicle_id");
 
-    const supabase = createServerClient();
+    const supabase = await createServerClient();
     let query = supabase
       .from("market_comps")
       .select("*")
@@ -32,11 +33,16 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const supabase = createServerClient();
+    const supabase = await createServerClient();
+    const session = await getSessionDealership(supabase);
+    if (!session) {
+      return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
+    }
 
     const { data, error } = await supabase
       .from("market_comps")
       .insert({
+        dealership_id: session.dealershipId,
         vehicle_id: body.vehicle_id,
         year: body.year,
         make: body.make,

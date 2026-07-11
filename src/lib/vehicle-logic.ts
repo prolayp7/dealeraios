@@ -61,7 +61,7 @@ export function computeActionRequired(priority: AiPriority): string {
 
 export function enrichVehicle(data: VehicleFormData & { id?: string }): Omit<
   Vehicle,
-  "id" | "created_at"
+  "id" | "created_at" | "dealership_id"
 > & { id?: string } {
   const myCost = data.my_cost ?? 0;
   const repairCost = data.repair_cost ?? 0;

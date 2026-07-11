@@ -13,7 +13,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const supabase = createServerClient();
+    const supabase = await createServerClient();
     const { data: vehicle, error } = await supabase
       .from("vehicles")
       .select("year, make, model, mileage, retail_price, notes")

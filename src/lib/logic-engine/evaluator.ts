@@ -1,4 +1,5 @@
 import type { AiPriority } from "@/lib/types";
+import { isMoneyTrap, moneyTrapAction } from "@/lib/money-trap";
 import type {
   LogicRule,
   RuleHit,
@@ -37,12 +38,17 @@ function evaluateBuiltInRule(
 
   switch (rule.id) {
     case "money-trap":
-      if (ctx.daysInStock > 45) {
+      if (isMoneyTrap({ daysInStock: ctx.daysInStock, roi: ctx.roi })) {
+        const recommendedAction = moneyTrapAction({
+          daysInStock: ctx.daysInStock,
+          roi: ctx.roi,
+        });
         return {
           rule,
           ai_priority: "MONEY TRAP",
-          action_required: "Money Trap — aging inventory, review pricing strategy",
-          recommended_price: price,
+          action_required: `Money Trap — ${recommendedAction}`,
+          recommended_price:
+            recommendedAction === "Reduce Price" ? adjustPrice(ctx, -5) : price,
           severity: PRIORITY_SEVERITY["MONEY TRAP"],
         };
       }

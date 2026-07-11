@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase/server";
+import { getSessionDealership } from "@/lib/supabase/session";
 import type { FbListing } from "@/lib/fb-scraper/types";
 
 export const runtime = "nodejs";
@@ -10,7 +11,7 @@ interface SaveRequestBody {
 }
 
 async function updateVehicleStats(vehicleId: string) {
-  const supabase = createServerClient();
+  const supabase = await createServerClient();
   const { data: comps } = await supabase
     .from("market_comps")
     .select("listing_price")
@@ -50,10 +51,16 @@ export async function POST(request: Request) {
       );
     }
 
-    const supabase = createServerClient();
+    const supabase = await createServerClient();
+    const session = await getSessionDealership(supabase);
+    if (!session) {
+      return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
+    }
+
     const today = new Date().toISOString().split("T")[0];
 
     const rows = results.map((item) => ({
+      dealership_id: session.dealershipId,
       vehicle_id: vehicle_id ?? null,
       year: item.year,
       make: item.make,

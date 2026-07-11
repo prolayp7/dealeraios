@@ -180,6 +180,7 @@ export function VehicleImagesUpload({
         ref={inputRef}
         type="file"
         accept="image/jpeg,image/png,image/webp,image/gif"
+        capture="environment"
         multiple
         className="hidden"
         onChange={(e) => {

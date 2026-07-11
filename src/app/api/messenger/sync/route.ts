@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase/server";
+import { getSessionDealership } from "@/lib/supabase/session";
 import {
   fetchConversationMessages,
   fetchConversations,
@@ -17,7 +18,12 @@ export async function POST() {
       );
     }
 
-    const supabase = createServerClient();
+    const supabase = await createServerClient();
+    const session = await getSessionDealership(supabase);
+    if (!session) {
+      return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
+    }
+
     const conversations = await fetchConversations();
 
     let newCustomers = 0;
@@ -40,6 +46,7 @@ export async function POST() {
         const { data: created, error: createError } = await supabase
           .from("customers")
           .insert({
+            dealership_id: session.dealershipId,
             name: participant.name ?? "Facebook User",
             email: participant.email ?? null,
             fb_messenger_id: participant.id,
@@ -86,6 +93,7 @@ export async function POST() {
           fbMsg.from.id === pageId ? "outbound" : "inbound";
 
         const { error: msgError } = await supabase.from("messages").insert({
+          dealership_id: session.dealershipId,
           customer_id: customerId,
           message: fbMsg.message,
           direction,

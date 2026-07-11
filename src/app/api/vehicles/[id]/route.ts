@@ -14,7 +14,7 @@ import type { VehicleFormData } from "@/lib/types";
 export async function GET(_request: Request, props: { params: Promise<{ id: string }> }) {
   const params = await props.params;
   try {
-    const supabase = createServerClient();
+    const supabase = await createServerClient();
     const { data, error } = await supabase
       .from("vehicles")
       .select("*")
@@ -43,7 +43,7 @@ export async function PATCH(request: Request, props: { params: Promise<{ id: str
     const { imageUrls, coverUrl } = extractVehicleImages(body);
     const enriched = enrichVehicle({ ...body, id: params.id });
 
-    const supabase = createServerClient();
+    const supabase = await createServerClient();
     const { data, error } = await saveVehicleWithOptionalImage({
       vehicleId: params.id,
       enriched,
@@ -77,7 +77,7 @@ export async function PATCH(request: Request, props: { params: Promise<{ id: str
 export async function DELETE(_request: Request, props: { params: Promise<{ id: string }> }) {
   const params = await props.params;
   try {
-    const supabase = createServerClient();
+    const supabase = await createServerClient();
     const { error } = await supabase
       .from("vehicles")
       .delete()

@@ -12,6 +12,7 @@ export type FbListingStatus = "draft" | "published" | "sold";
 
 export interface Vehicle {
   id: string;
+  dealership_id: string;
   year: number | null;
   make: string | null;
   model: string | null;
@@ -49,6 +50,7 @@ export interface Vehicle {
 
 export interface MarketComp {
   id: string;
+  dealership_id: string;
   vehicle_id: string;
   year: number | null;
   make: string | null;
@@ -106,6 +108,7 @@ export type CustomerSource = "messenger" | "manual";
 
 export interface Customer {
   id: string;
+  dealership_id: string;
   name: string | null;
   phone: string | null;
   email: string | null;
@@ -119,6 +122,7 @@ export interface Customer {
 
 export interface Message {
   id: string;
+  dealership_id: string;
   customer_id: string;
   message: string;
   direction: MessageDirection;
@@ -130,6 +134,7 @@ export interface Message {
 
 export interface CustomerInquiry {
   id: string;
+  dealership_id: string;
   customer_id: string;
   vehicle_id: string | null;
   notes: string | null;
@@ -141,4 +146,21 @@ export interface ConversationSummary {
   last_message: string | null;
   last_message_at: string | null;
   unread_count: number;
+}
+
+export type ProfileRole = "admin" | "staff";
+
+export interface Dealership {
+  id: string;
+  name: string;
+  created_at: string;
+}
+
+export interface Profile {
+  id: string;
+  dealership_id: string;
+  role: ProfileRole;
+  full_name: string | null;
+  email: string;
+  created_at: string;
 }

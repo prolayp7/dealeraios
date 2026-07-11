@@ -55,6 +55,7 @@ function toRuleContext(
   return {
     daysInStock,
     netProfit: vehicle.net_profit ?? 0,
+    roi: vehicle.roi ?? 0,
     leadCount,
     oldestLeadAgeMinutes,
     compCount: vehicle.comp_count ?? 0,
@@ -67,7 +68,7 @@ function toRuleContext(
 
 export async function POST() {
   try {
-    const supabase = createServerClient();
+    const supabase = await createServerClient();
     const rules = await loadAllRules(DEFAULT_LOGIC_RULES);
 
     const { data: vehicles, error: vehiclesError } = await supabase

@@ -1,8 +1,25 @@
-import { createClient } from "@supabase/supabase-js";
+import { createServerClient as createSSRServerClient } from "@supabase/ssr";
+import { cookies } from "next/headers";
 
-export function createServerClient() {
+export async function createServerClient() {
+  const cookieStore = await cookies();
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
   const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!;
 
-  return createClient(supabaseUrl, supabaseAnonKey);
+  return createSSRServerClient(supabaseUrl, supabaseAnonKey, {
+    cookies: {
+      getAll() {
+        return cookieStore.getAll();
+      },
+      setAll(cookiesToSet) {
+        try {
+          cookiesToSet.forEach(({ name, value, options }) =>
+            cookieStore.set(name, value, options)
+          );
+        } catch {
+          // Called from a Server Component — middleware refreshes the session instead.
+        }
+      },
+    },
+  });
 }

@@ -1,0 +1,136 @@
+import type { VehicleFormData } from "./types";
+
+export interface TargetField {
+  key: keyof VehicleFormData;
+  label: string;
+  required?: boolean;
+}
+
+// The importable Vehicle fields, in the order shown to the dealer during mapping.
+export const TARGET_FIELDS: TargetField[] = [
+  { key: "year", label: "Year" },
+  { key: "make", label: "Make", required: true },
+  { key: "model", label: "Model", required: true },
+  { key: "mileage", label: "Mileage" },
+  { key: "vin", label: "VIN" },
+  { key: "my_cost", label: "Purchase Cost" },
+  { key: "repair_cost", label: "Repair Cost" },
+  { key: "retail_price", label: "Retail Price" },
+  { key: "listed_online", label: "Listed Online" },
+  { key: "online_channel", label: "Listing Channel" },
+  { key: "status", label: "Status" },
+  { key: "bought_date", label: "Bought Date" },
+  { key: "days_in_stock", label: "Days In Stock" },
+  { key: "notes", label: "Notes" },
+];
+
+function normalizeHeader(header: string): string {
+  return header.toLowerCase().replace(/[^a-z0-9]/g, "");
+}
+
+export function parseCsvLine(line: string): string[] {
+  const result: string[] = [];
+  let current = "";
+  let inQuotes = false;
+
+  for (let i = 0; i < line.length; i++) {
+    const char = line[i];
+    if (char === '"') {
+      inQuotes = !inQuotes;
+    } else if (char === "," && !inQuotes) {
+      result.push(current.trim());
+      current = "";
+    } else {
+      current += char;
+    }
+  }
+  result.push(current.trim());
+  return result;
+}
+
+export interface ParsedCsv {
+  headers: string[];
+  rows: string[][];
+}
+
+export function parseCsvText(text: string): ParsedCsv {
+  const lines = text.split(/\r?\n/).filter((line) => line.trim());
+  if (lines.length < 1) return { headers: [], rows: [] };
+
+  const headers = parseCsvLine(lines[0]);
+  const rows = lines.slice(1).map(parseCsvLine);
+  return { headers, rows };
+}
+
+// Best-guess mapping from detected CSV headers to target Vehicle fields —
+// shown to the dealer as a starting point, not committed until confirmed.
+export type ColumnMapping = Partial<Record<keyof VehicleFormData, string>>;
+
+export function suggestColumnMapping(headers: string[]): ColumnMapping {
+  const mapping: ColumnMapping = {};
+  const normalizedHeaders = headers.map((h) => ({
+    original: h,
+    normalized: normalizeHeader(h),
+  }));
+
+  for (const field of TARGET_FIELDS) {
+    const fieldNormalized = normalizeHeader(field.key).replace(/_/g, "");
+    const match = normalizedHeaders.find(
+      (h) => h.normalized === fieldNormalized || h.normalized === normalizeHeader(field.label)
+    );
+    if (match) mapping[field.key] = match.original;
+  }
+
+  return mapping;
+}
+
+function parseValue(key: keyof VehicleFormData, value: string): unknown {
+  if (!value) return null;
+
+  switch (key) {
+    case "year":
+    case "mileage":
+    case "days_in_stock":
+      return parseInt(value, 10) || null;
+    case "my_cost":
+    case "repair_cost":
+    case "retail_price":
+      return parseFloat(value.replace(/[$,]/g, "")) || null;
+    case "listed_online":
+      return ["true", "yes", "1", "y"].includes(value.toLowerCase());
+    default:
+      return value;
+  }
+}
+
+// Applies a dealer-confirmed mapping to raw CSV rows, producing importable
+// vehicle rows. Rows missing both make and model are dropped as unusable.
+export function applyColumnMapping(
+  parsed: ParsedCsv,
+  mapping: ColumnMapping
+): VehicleFormData[] {
+  const headerIndex = new Map(parsed.headers.map((h, i) => [h, i]));
+
+  const vehicles: VehicleFormData[] = [];
+
+  for (const row of parsed.rows) {
+    const vehicle: VehicleFormData = {};
+
+    for (const field of TARGET_FIELDS) {
+      const header = mapping[field.key];
+      if (!header) continue;
+      const index = headerIndex.get(header);
+      if (index == null || row[index] === undefined) continue;
+      (vehicle as Record<string, unknown>)[field.key] = parseValue(
+        field.key,
+        row[index]
+      );
+    }
+
+    if (vehicle.make || vehicle.model) {
+      vehicles.push(vehicle);
+    }
+  }
+
+  return vehicles;
+}
