@@ -110,18 +110,23 @@ ALTER TABLE customers ENABLE ROW LEVEL SECURITY;
 ALTER TABLE messages ENABLE ROW LEVEL SECURITY;
 ALTER TABLE customer_inquiries ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Allow all access to vehicles" ON vehicles;
 CREATE POLICY "Allow all access to vehicles" ON vehicles
   FOR ALL USING (true) WITH CHECK (true);
 
+DROP POLICY IF EXISTS "Allow all access to market_comps" ON market_comps;
 CREATE POLICY "Allow all access to market_comps" ON market_comps
   FOR ALL USING (true) WITH CHECK (true);
 
+DROP POLICY IF EXISTS "Allow all access to customers" ON customers;
 CREATE POLICY "Allow all access to customers" ON customers
   FOR ALL USING (true) WITH CHECK (true);
 
+DROP POLICY IF EXISTS "Allow all access to messages" ON messages;
 CREATE POLICY "Allow all access to messages" ON messages
   FOR ALL USING (true) WITH CHECK (true);
 
+DROP POLICY IF EXISTS "Allow all access to customer_inquiries" ON customer_inquiries;
 CREATE POLICY "Allow all access to customer_inquiries" ON customer_inquiries
   FOR ALL USING (true) WITH CHECK (true);
 
