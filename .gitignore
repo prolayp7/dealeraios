@@ -40,3 +40,4 @@ next-env.d.ts
 docs/*
 .git-credentials.local
 deploy.sh
+creds.txt
