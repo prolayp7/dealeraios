@@ -106,6 +106,13 @@ export interface AiExtractedVehicle {
 export type MessageDirection = "inbound" | "outbound";
 export type CustomerSource = "messenger" | "manual";
 
+export interface Tag {
+  id: string;
+  dealership_id: string;
+  name: string;
+  created_at: string;
+}
+
 export interface Customer {
   id: string;
   dealership_id: string;
@@ -118,6 +125,7 @@ export interface Customer {
   source: CustomerSource | null;
   notes: string | null;
   created_at: string;
+  tags?: Tag[];
 }
 
 export interface Message {
@@ -146,6 +154,65 @@ export interface ConversationSummary {
   last_message: string | null;
   last_message_at: string | null;
   unread_count: number;
+}
+
+export type CashflowType =
+  | "vehicle_purchase"
+  | "vehicle_sale"
+  | "repair"
+  | "transport"
+  | "insurance"
+  | "rent"
+  | "payroll"
+  | "advertising"
+  | "auction_fee"
+  | "misc";
+
+export interface CashflowTransaction {
+  id: string;
+  dealership_id: string;
+  vehicle_id: string | null;
+  type: CashflowType;
+  amount: number;
+  description: string | null;
+  transaction_date: string;
+  created_at: string;
+}
+
+export interface AcquisitionOpportunity {
+  id: string;
+  dealership_id: string;
+  source: string;
+  title: string | null;
+  year: number | null;
+  make: string | null;
+  model: string | null;
+  mileage: number | null;
+  asking_price: number | null;
+  location: string | null;
+  url: string | null;
+  recommendation: "BUY" | "WATCH" | "PASS" | "RUN";
+  max_buy_price: number | null;
+  expected_profit: number | null;
+  expected_roi: number | null;
+  notes: string | null;
+  discovered_at: string;
+  created_at: string;
+}
+
+export interface MarketplaceAccount {
+  id: string;
+  platform: string;
+  label: string;
+}
+
+export interface DealershipSettings {
+  dealership_id: string;
+  company: { name?: string; address?: string; phone?: string };
+  inactivity_threshold_hours: number;
+  ai_settings: { default_listing_template?: string };
+  marketplace_accounts: MarketplaceAccount[];
+  updated_at: string;
 }
 
 export type ProfileRole = "admin" | "staff";

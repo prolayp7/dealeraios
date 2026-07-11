@@ -1,20 +1,26 @@
 import { NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase/server";
+import type { Tag } from "@/lib/types";
 
 export async function GET(_request: Request, props: { params: Promise<{ id: string }> }) {
   const params = await props.params;
   try {
     const supabase = await createServerClient();
 
-    const { data: customer, error: customerError } = await supabase
+    const { data: customerRow, error: customerError } = await supabase
       .from("customers")
-      .select("*")
+      .select("*, customer_tags(tags(*))")
       .eq("id", params.id)
       .single();
 
-    if (customerError || !customer) {
+    if (customerError || !customerRow) {
       return NextResponse.json({ error: "Customer not found" }, { status: 404 });
     }
+
+    const { customer_tags, ...customerFields } = customerRow as {
+      customer_tags: { tags: Tag }[];
+    } & Record<string, unknown>;
+    const customer = { ...customerFields, tags: customer_tags.map((ct) => ct.tags) };
 
     const { data: messages } = await supabase
       .from("messages")

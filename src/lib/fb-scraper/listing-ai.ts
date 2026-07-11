@@ -57,7 +57,8 @@ export async function generateFbListing(
   vehicle: Pick<
     Vehicle,
     "year" | "make" | "model" | "mileage" | "retail_price" | "notes"
-  >
+  >,
+  templateStyle?: string
 ): Promise<GeneratedListing> {
   if (!process.env.OPENAI_API_KEY) {
     return fallbackListing(vehicle);
@@ -69,8 +70,9 @@ export async function generateFbListing(
       messages: [
         {
           role: "system",
-          content:
-            "You write Facebook Marketplace vehicle listings for an independent used car dealer. Return only valid JSON.",
+          content: `You write Facebook Marketplace vehicle listings for an independent used car dealer. Return only valid JSON.${
+            templateStyle ? ` ${templateStyle}` : ""
+          }`,
         },
         { role: "user", content: buildListingPrompt(vehicle) },
       ],

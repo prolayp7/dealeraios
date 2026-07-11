@@ -45,7 +45,7 @@ export default function AcceptInvitePage() {
         <CardHeader>
           <CardTitle>Set your password</CardTitle>
           <CardDescription>
-            You've been invited to join a dealership on Dealer AI OS. Choose a
+            You&apos;ve been invited to join a dealership on Dealer AI OS. Choose a
             password to finish setting up your account.
           </CardDescription>
         </CardHeader>

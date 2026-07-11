@@ -1,10 +1,11 @@
 import { NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase/server";
 import { generateFbListing } from "@/lib/fb-scraper/listing-ai";
+import { getListingTemplate } from "@/lib/listing-templates";
 
 export async function POST(request: Request) {
   try {
-    const { vehicle_id } = await request.json();
+    const { vehicle_id, template } = await request.json();
 
     if (!vehicle_id) {
       return NextResponse.json(
@@ -24,13 +25,15 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Vehicle not found" }, { status: 404 });
     }
 
-    const listing = await generateFbListing(vehicle);
+    const selectedTemplate = getListingTemplate(template);
+    const listing = await generateFbListing(vehicle, selectedTemplate.promptStyle);
 
     return NextResponse.json({
       title: listing.title,
       description: listing.description,
       price: vehicle.retail_price,
       category: "vehicles",
+      template: selectedTemplate.id,
     });
   } catch (error) {
     console.error("POST /api/fb-listing-generate:", error);

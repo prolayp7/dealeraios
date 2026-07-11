@@ -1,6 +1,30 @@
 import { NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase/server";
 import { getSessionDealership } from "@/lib/supabase/session";
+import type { Tag } from "@/lib/types";
+
+export async function GET() {
+  try {
+    const supabase = await createServerClient();
+    const { data, error } = await supabase
+      .from("customers")
+      .select("*, customer_tags(tags(*))")
+      .order("created_at", { ascending: false });
+
+    if (error) throw error;
+
+    type Row = { customer_tags: { tags: Tag }[] } & Record<string, unknown>;
+    const customers = (data ?? []).map((row) => {
+      const { customer_tags, ...customer } = row as Row;
+      return { ...customer, tags: customer_tags.map((ct) => ct.tags) };
+    });
+
+    return NextResponse.json(customers);
+  } catch (error) {
+    console.error("GET /api/customers:", error);
+    return NextResponse.json({ error: "Failed to load customers" }, { status: 500 });
+  }
+}
 
 export async function POST(request: Request) {
   try {

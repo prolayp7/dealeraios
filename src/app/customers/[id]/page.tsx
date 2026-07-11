@@ -3,12 +3,14 @@
 import { useEffect, useState, useCallback, type ReactNode } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { ArrowLeft, ExternalLink, Loader2 } from "lucide-react";
+import { ArrowLeft, ExternalLink, Loader2, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import type { Customer, CustomerInquiry, Message } from "@/lib/types";
+import type { Customer, CustomerInquiry, Message, Tag } from "@/lib/types";
 import { getVehicleLabel } from "@/lib/vehicle-logic";
 import { formatCurrency } from "@/lib/utils";
 import { cn } from "@/lib/utils";
@@ -31,9 +33,23 @@ export default function CustomerDetailPage() {
   const [customer, setCustomer] = useState<Customer | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [inquiries, setInquiries] = useState<InquiryWithVehicle[]>([]);
+  const [allTags, setAllTags] = useState<Tag[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [notes, setNotes] = useState("");
+  const [newTagInput, setNewTagInput] = useState("");
+  const [generatingFollowUp, setGeneratingFollowUp] = useState(false);
+  const [followUpDraft, setFollowUpDraft] = useState<string | null>(null);
+  const [followUpTemplate, setFollowUpTemplate] = useState("");
+
+  useEffect(() => {
+    setFollowUpTemplate(localStorage.getItem("dealer-follow-up-template") ?? "");
+  }, []);
+
+  const updateFollowUpTemplate = (value: string) => {
+    setFollowUpTemplate(value);
+    localStorage.setItem("dealer-follow-up-template", value);
+  };
 
   const loadData = useCallback(() => {
     fetch(`/api/customers/${id}`)
@@ -57,6 +73,63 @@ export default function CustomerDetailPage() {
   useEffect(() => {
     loadData();
   }, [loadData]);
+
+  useEffect(() => {
+    fetch("/api/tags")
+      .then((res) => res.json())
+      .then((data) => Array.isArray(data) && setAllTags(data))
+      .catch(console.error);
+  }, []);
+
+  const addTag = async (tagName: string) => {
+    const trimmed = tagName.trim();
+    if (!trimmed) return;
+
+    let tag = allTags.find((t) => t.name.toLowerCase() === trimmed.toLowerCase());
+    if (!tag) {
+      const res = await fetch("/api/tags", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: trimmed }),
+      });
+      tag = await res.json();
+      if (tag) setAllTags((prev) => [...prev, tag!]);
+    }
+    if (!tag) return;
+
+    await fetch(`/api/customers/${id}/tags`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ tag_id: tag.id }),
+    });
+
+    setNewTagInput("");
+    loadData();
+  };
+
+  const removeTag = async (tagId: string) => {
+    await fetch(`/api/customers/${id}/tags?tag_id=${tagId}`, { method: "DELETE" });
+    loadData();
+  };
+
+  const generateFollowUp = async () => {
+    setGeneratingFollowUp(true);
+    setFollowUpDraft(null);
+    try {
+      const res = await fetch(`/api/customers/${id}/follow-up`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ customTemplate: followUpTemplate || undefined }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to generate follow-up");
+      setFollowUpDraft(data.message);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setGeneratingFollowUp(false);
+    }
+  };
 
   const handleSaveNotes = async () => {
     setSaving(true);
@@ -144,6 +217,40 @@ export default function CustomerDetailPage() {
                 ) : null
               }
             />
+            <div className="space-y-2 border-b border-slate-800 py-2">
+              <span className="text-slate-400">Tags</span>
+              <div className="flex flex-wrap items-center gap-2">
+                {(customer.tags ?? []).map((tag) => (
+                  <Badge
+                    key={tag.id}
+                    variant={tag.name === "Hot Lead" ? "urgent" : "secondary"}
+                    className="cursor-pointer"
+                    onClick={() => removeTag(tag.id)}
+                    title="Click to remove"
+                  >
+                    {tag.name} ×
+                  </Badge>
+                ))}
+                <Input
+                  placeholder="Add tag..."
+                  value={newTagInput}
+                  onChange={(e) => setNewTagInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      addTag(newTagInput);
+                    }
+                  }}
+                  list="tag-options"
+                  className="h-8 w-32 text-xs"
+                />
+                <datalist id="tag-options">
+                  {allTags.map((t) => (
+                    <option key={t.id} value={t.name} />
+                  ))}
+                </datalist>
+              </div>
+            </div>
             <div className="space-y-2 pt-2">
               <Label htmlFor="notes">Notes</Label>
               <Textarea
@@ -242,6 +349,37 @@ export default function CustomerDetailPage() {
               ))
             )}
           </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Sparkles className="h-5 w-5 text-orange-500" />
+            AI Follow-Up
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="space-y-2">
+            <Label htmlFor="follow-up-template">
+              Dealer template (optional — saved in this browser for reuse)
+            </Label>
+            <Textarea
+              id="follow-up-template"
+              placeholder="e.g. Mention our end-of-month financing promo"
+              value={followUpTemplate}
+              onChange={(e) => updateFollowUpTemplate(e.target.value)}
+              rows={2}
+            />
+          </div>
+          <Button onClick={generateFollowUp} disabled={generatingFollowUp}>
+            {generatingFollowUp ? "Generating..." : "Generate Follow-Up Message"}
+          </Button>
+          {followUpDraft && (
+            <div className="rounded-lg border border-slate-700 bg-slate-950/50 p-3 text-sm text-slate-200">
+              {followUpDraft}
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>

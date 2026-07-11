@@ -106,18 +106,33 @@ export function getStaleListings(vehicles: Vehicle[]): StaleListing[] {
     .sort((a, b) => b.daysSinceListed - a.daysSinceListed);
 }
 
-const INACTIVE_THRESHOLD_HOURS = 48;
+export const DEFAULT_INACTIVITY_THRESHOLD_HOURS = 48;
+const HOT_LEAD_TAG_NAME = "Hot Lead";
 
-// Surfaces inactive conversations for AI GM to flag — the AI-drafted
-// follow-up message itself is Day 3's Lead CRM AI, not this endpoint.
+function isHotLead(conversation: ConversationSummary): boolean {
+  return (conversation.customer.tags ?? []).some((t) => t.name === HOT_LEAD_TAG_NAME);
+}
+
+// Surfaces inactive conversations for AI GM to flag, Hot Lead-tagged ones
+// first (Answers §5/Q17 — tags affect AI prioritization). The inactivity
+// threshold is dealer-editable in Settings (Answers §5/Q19), defaulting to
+// 48h. The AI-drafted follow-up message itself lives on the Lead CRM detail
+// page, not here.
 export function getInactiveConversations(
-  conversations: ConversationSummary[]
+  conversations: ConversationSummary[],
+  thresholdHours: number = DEFAULT_INACTIVITY_THRESHOLD_HOURS
 ): ConversationSummary[] {
   const now = Date.now();
 
-  return conversations.filter((c) => {
-    if (c.unread_count === 0 || !c.last_message_at) return false;
-    const hoursSince = (now - new Date(c.last_message_at).getTime()) / (1000 * 60 * 60);
-    return hoursSince >= INACTIVE_THRESHOLD_HOURS;
-  });
+  return conversations
+    .filter((c) => {
+      if (c.unread_count === 0 || !c.last_message_at) return false;
+      const hoursSince = (now - new Date(c.last_message_at).getTime()) / (1000 * 60 * 60);
+      return hoursSince >= thresholdHours;
+    })
+    .sort((a, b) => {
+      const aHot = isHotLead(a) ? 1 : 0;
+      const bHot = isHotLead(b) ? 1 : 0;
+      return bHot - aHot;
+    });
 }

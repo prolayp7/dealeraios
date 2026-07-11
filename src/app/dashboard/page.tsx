@@ -11,6 +11,7 @@ import { KpiCard } from "@/components/kpi-card";
 import { MissionBanner } from "@/components/mission-banner";
 import { MoneyTrapWidget } from "@/components/money-trap-widget";
 import { RevenueTrendWidget } from "@/components/revenue-trend-widget";
+import { VoiceSaleEntry } from "@/components/voice-sale-entry";
 import { Card, CardContent } from "@/components/ui/card";
 import { computeAvailableCash } from "@/lib/available-cash";
 import {
@@ -18,7 +19,7 @@ import {
   matchesFilter,
   type FilterTab,
 } from "@/lib/inventory-filters";
-import type { AiPriority, Vehicle } from "@/lib/types";
+import type { AiPriority, CashflowTransaction, Vehicle } from "@/lib/types";
 import { formatCurrency, formatNumber, formatPercent } from "@/lib/utils";
 
 const PRIORITY_ORDER: AiPriority[] = [
@@ -45,13 +46,14 @@ const PRIORITY_LABELS: Record<AiPriority, string> = {
 
 export default function DashboardPage() {
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
+  const [transactions, setTransactions] = useState<CashflowTransaction[]>([]);
   const [loading, setLoading] = useState(true);
   const [unreadMessages, setUnreadMessages] = useState(0);
   const [activeFilter, setActiveFilter] = useState<FilterTab>("action");
 
   usePageHeader({ title: "Command Center", notificationCount: unreadMessages });
 
-  useEffect(() => {
+  const loadDashboardData = () => {
     fetch("/api/vehicles")
       .then((res) => res.json())
       .then((data) => {
@@ -59,6 +61,17 @@ export default function DashboardPage() {
       })
       .catch(console.error)
       .finally(() => setLoading(false));
+
+    fetch("/api/cashflow")
+      .then((res) => res.json())
+      .then((data) => {
+        if (Array.isArray(data)) setTransactions(data);
+      })
+      .catch(console.error);
+  };
+
+  useEffect(() => {
+    loadDashboardData();
 
     fetch("/api/messenger/unread")
       .then((r) => r.json())
@@ -84,7 +97,10 @@ export default function DashboardPage() {
       ? vehicles.reduce((sum, v) => sum + (v.roi ?? 0), 0) / vehicles.length
       : 0;
 
-  const availableCash = useMemo(() => computeAvailableCash(vehicles), [vehicles]);
+  const availableCash = useMemo(
+    () => computeAvailableCash(transactions),
+    [transactions]
+  );
   const activeListings = vehicles.filter((v) => v.listed_online).length;
   const inactiveListings = totalVehicles - activeListings;
   const avgDaysInStock =
@@ -204,6 +220,8 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
       </Link>
+
+      <VoiceSaleEntry onSold={loadDashboardData} />
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-8">
         {PRIORITY_ORDER.map((priority) => (

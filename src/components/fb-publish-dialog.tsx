@@ -16,6 +16,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import type { Vehicle } from "@/lib/types";
 import { formatCurrency } from "@/lib/utils";
+import { LISTING_TEMPLATES, type ListingTemplateId } from "@/lib/listing-templates";
 
 interface FbPublishDialogProps {
   vehicle: Vehicle;
@@ -35,6 +36,7 @@ export function FbPublishDialog({ vehicle, onPublished }: FbPublishDialogProps) 
   const [location, setLocation] = useState("");
   const [photos, setPhotos] = useState<string[]>([]);
   const [newPhotoUrl, setNewPhotoUrl] = useState("");
+  const [template, setTemplate] = useState<ListingTemplateId>("marketplace");
 
   const [prevOpen, setPrevOpen] = useState(open);
   if (open !== prevOpen) {
@@ -50,7 +52,7 @@ export function FbPublishDialog({ vehicle, onPublished }: FbPublishDialogProps) 
     return fetch("/api/fb-listing-generate", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ vehicle_id: vehicle.id }),
+      body: JSON.stringify({ vehicle_id: vehicle.id, template }),
     })
       .then((res) => res.json().then((data) => ({ res, data })))
       .then(({ res, data }) => {
@@ -69,10 +71,11 @@ export function FbPublishDialog({ vehicle, onPublished }: FbPublishDialogProps) 
       .finally(() => {
         setLoadingPreview(false);
       });
-  }, [vehicle.id, vehicle.retail_price]);
+  }, [vehicle.id, vehicle.retail_price, template]);
 
   useEffect(() => {
     if (open) {
+      setLoadingPreview(true);
       loadPreview();
     }
   }, [open, loadPreview]);
@@ -166,6 +169,22 @@ export function FbPublishDialog({ vehicle, onPublished }: FbPublishDialogProps) 
           </div>
         ) : (
           <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="fb-template">Listing Template</Label>
+              <select
+                id="fb-template"
+                value={template}
+                onChange={(e) => setTemplate(e.target.value as ListingTemplateId)}
+                className="flex h-10 w-full rounded-md border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500"
+              >
+                {LISTING_TEMPLATES.map((t) => (
+                  <option key={t.id} value={t.id}>
+                    {t.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+
             <div className="space-y-2">
               <Label htmlFor="fb-title">Title</Label>
               <Input

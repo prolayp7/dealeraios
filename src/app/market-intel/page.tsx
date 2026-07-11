@@ -171,7 +171,7 @@ export default function MarketIntelPage() {
         <CardContent>
           {history.length === 0 ? (
             <p className="text-sm text-slate-500">
-              No evaluations yet — click "Evaluate Again" to run the first one.
+              No evaluations yet — click &ldquo;Evaluate Again&rdquo; to run the first one.
             </p>
           ) : (
             <div className="space-y-4">

@@ -15,7 +15,10 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { formatCurrency } from "@/lib/utils";
-import { getInactiveConversations } from "@/lib/ai-gm-recommendations";
+import {
+  DEFAULT_INACTIVITY_THRESHOLD_HOURS,
+  getInactiveConversations,
+} from "@/lib/ai-gm-recommendations";
 import type {
   AuctionCandidate,
   PortfolioPricingRow,
@@ -32,6 +35,9 @@ interface Portfolio {
 export default function AiGmPage() {
   const [portfolio, setPortfolio] = useState<Portfolio | null>(null);
   const [conversations, setConversations] = useState<ConversationSummary[]>([]);
+  const [inactivityThreshold, setInactivityThreshold] = useState(
+    DEFAULT_INACTIVITY_THRESHOLD_HOURS
+  );
   const [loading, setLoading] = useState(true);
   const [refreshingId, setRefreshingId] = useState<string | null>(null);
   const [refreshedIds, setRefreshedIds] = useState<Set<string>>(new Set());
@@ -41,10 +47,14 @@ export default function AiGmPage() {
     Promise.all([
       fetch("/api/ai-gm/portfolio").then((r) => r.json()),
       fetch("/api/messenger/conversations").then((r) => r.json()),
+      fetch("/api/settings").then((r) => r.json()),
     ])
-      .then(([portfolioData, conversationData]) => {
+      .then(([portfolioData, conversationData, settingsData]) => {
         setPortfolio(portfolioData);
         if (Array.isArray(conversationData)) setConversations(conversationData);
+        if (settingsData?.inactivity_threshold_hours) {
+          setInactivityThreshold(settingsData.inactivity_threshold_hours);
+        }
       })
       .catch(console.error)
       .finally(() => setLoading(false));
@@ -71,7 +81,7 @@ export default function AiGmPage() {
     }
   };
 
-  const inactiveConversations = getInactiveConversations(conversations);
+  const inactiveConversations = getInactiveConversations(conversations, inactivityThreshold);
 
   if (loading) {
     return (
@@ -90,7 +100,7 @@ export default function AiGmPage() {
         </h1>
         <p className="mt-1 text-slate-400">
           Portfolio-wide calls across your whole inventory — distinct from AI
-          Appraiser's per-vehicle valuation. Recommendations only: nothing here
+          Appraiser&apos;s per-vehicle valuation. Recommendations only: nothing here
           posts a listing or refreshes one without your explicit approval.
         </p>
       </div>
@@ -225,7 +235,7 @@ export default function AiGmPage() {
         <CardContent>
           {inactiveConversations.length === 0 ? (
             <p className="text-sm text-slate-500">
-              No conversations inactive for 48+ hours with unread messages.
+              No conversations inactive for {inactivityThreshold}+ hours with unread messages.
             </p>
           ) : (
             <div className="space-y-2">
