@@ -14,9 +14,9 @@ export const DEFAULT_LOGIC_RULES: LogicRule[] = [
   {
     id: "auction",
     name: "Auction",
-    summary: "Days In Stock > 75 AND Profit < $1,000 → Send To Auction",
-    condition: "Days In Stock > 75 AND Profit < $1,000",
-    action: "Send To Auction",
+    summary: "Days In Stock > 90 → Recommend Auction (recommend only, never auto-posted)",
+    condition: "Days In Stock > 90",
+    action: "Recommend Auction",
     category: "inventory",
     active: true,
     builtIn: true,

@@ -55,11 +55,13 @@ function evaluateBuiltInRule(
       break;
 
     case "auction":
-      if (ctx.daysInStock > 75 && ctx.netProfit < 1000) {
+      // Answers §6/Q21 — 90+ days is the default recommend-only auction trigger.
+      // Never auto-posts; the dealer acts on this from AI GM.
+      if (ctx.daysInStock > 90) {
         return {
           rule,
           ai_priority: "AUCTION",
-          action_required: "Send to auction — low profit and aging stock",
+          action_required: "Recommend auction — 90+ days in inventory",
           recommended_price: price,
           severity: PRIORITY_SEVERITY.AUCTION,
         };

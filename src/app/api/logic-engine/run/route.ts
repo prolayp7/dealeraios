@@ -71,10 +71,13 @@ export async function POST() {
     const supabase = await createServerClient();
     const rules = await loadAllRules(DEFAULT_LOGIC_RULES);
 
+    // Evaluate every vehicle not yet sold — "available" never matched real
+    // data, since the app's actual status values are free text like
+    // "In Stock", not a fixed "available" enum.
     const { data: vehicles, error: vehiclesError } = await supabase
       .from("vehicles")
       .select("*")
-      .eq("status", "available");
+      .not("status", "ilike", "sold");
 
     if (vehiclesError) throw vehiclesError;
 

@@ -1,8 +1,12 @@
 const KIE_API_BASE = "https://api.kie.ai";
 
+export type KieMessageContentPart =
+  | { type: "text"; text: string }
+  | { type: "image_url"; image_url: { url: string } };
+
 export type KieMessage = {
   role: "system" | "user" | "assistant";
-  content: string;
+  content: string | KieMessageContentPart[];
 };
 
 export type KieChatOptions = {
