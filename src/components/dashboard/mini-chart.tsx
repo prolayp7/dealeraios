@@ -1,3 +1,5 @@
+import { useId } from "react";
+
 export interface MiniChartPoint {
   label: string;
   value: number;
@@ -27,6 +29,8 @@ export function MiniChart({
   height = 120,
   formatValue = (v) => String(v),
 }: MiniChartProps) {
+  const reactId = useId();
+
   if (data.length === 0) {
     return (
       <div
@@ -38,7 +42,7 @@ export function MiniChart({
     );
   }
 
-  const gradientId = `mini-chart-gradient-${color}`;
+  const gradientId = `mini-chart-gradient-${color}-${reactId}`;
   const max = Math.max(...data.map((d) => d.value), 1);
   const min = variant === "bar" ? 0 : Math.min(...data.map((d) => d.value), 0);
   const range = max - min || 1;
