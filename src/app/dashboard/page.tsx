@@ -13,13 +13,34 @@ import { MoneyTrapWidget } from "@/components/money-trap-widget";
 import { RevenueTrendWidget } from "@/components/revenue-trend-widget";
 import { VoiceSaleEntry } from "@/components/voice-sale-entry";
 import { Card, CardContent } from "@/components/ui/card";
+import { MoneyTrapsPanel } from "@/components/dashboard/money-traps-panel";
+import { TopOpportunitiesPanel } from "@/components/dashboard/top-opportunities-panel";
+import { AiRecommendationsPanel } from "@/components/dashboard/ai-recommendations-panel";
+import { MarketPulsePanel } from "@/components/dashboard/market-pulse-panel";
+import { AiGmPanel } from "@/components/dashboard/ai-gm-panel";
+import { CriticalAlertsPanel } from "@/components/dashboard/critical-alerts-panel";
+import { PricingOpportunitiesPanel } from "@/components/dashboard/pricing-opportunities-panel";
+import { AcquisitionOpportunitiesPanel } from "@/components/dashboard/acquisition-opportunities-panel";
+import { InventoryAgingChart } from "@/components/dashboard/inventory-aging-chart";
+import { ProfitTrendChart } from "@/components/dashboard/profit-trend-chart";
+import { RevenueTrendChart } from "@/components/dashboard/revenue-trend-chart";
+import { LeadConversionChart } from "@/components/dashboard/lead-conversion-chart";
+import { InventoryTurnRateChart } from "@/components/dashboard/inventory-turn-rate-chart";
+import { CashflowForecastChart } from "@/components/dashboard/cashflow-forecast-chart";
+import { MonthlyRevenueChart } from "@/components/dashboard/monthly-revenue-chart";
+import { InventoryValueChart } from "@/components/dashboard/inventory-value-chart";
 import { computeAvailableCash } from "@/lib/available-cash";
 import {
   countByFilter,
   matchesFilter,
   type FilterTab,
 } from "@/lib/inventory-filters";
-import type { AiPriority, CashflowTransaction, Vehicle } from "@/lib/types";
+import type {
+  AcquisitionOpportunity,
+  AiPriority,
+  CashflowTransaction,
+  Vehicle,
+} from "@/lib/types";
 import { formatCurrency, formatNumber, formatPercent } from "@/lib/utils";
 
 const PRIORITY_ORDER: AiPriority[] = [
@@ -47,6 +68,9 @@ const PRIORITY_LABELS: Record<AiPriority, string> = {
 export default function DashboardPage() {
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [transactions, setTransactions] = useState<CashflowTransaction[]>([]);
+  const [acquisitionOpportunities, setAcquisitionOpportunities] = useState<
+    AcquisitionOpportunity[]
+  >([]);
   const [loading, setLoading] = useState(true);
   const [unreadMessages, setUnreadMessages] = useState(0);
   const [activeFilter, setActiveFilter] = useState<FilterTab>("action");
@@ -66,6 +90,13 @@ export default function DashboardPage() {
       .then((res) => res.json())
       .then((data) => {
         if (Array.isArray(data)) setTransactions(data);
+      })
+      .catch(console.error);
+
+    fetch("/api/acquisition")
+      .then((res) => res.json())
+      .then((data) => {
+        if (Array.isArray(data)) setAcquisitionOpportunities(data);
       })
       .catch(console.error);
   };
@@ -167,6 +198,33 @@ export default function DashboardPage() {
           },
         ]}
       />
+
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-5">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:col-span-4 lg:grid-cols-4">
+          <MoneyTrapsPanel vehicles={vehicles} />
+          <TopOpportunitiesPanel />
+          <AiRecommendationsPanel />
+          <MarketPulsePanel />
+        </div>
+
+        <div className="space-y-4 lg:row-span-2">
+          <AiGmPanel missionScore={94} movesQueued={4} newLeads={11} />
+          <CriticalAlertsPanel />
+          <PricingOpportunitiesPanel vehicles={vehicles} />
+          <AcquisitionOpportunitiesPanel opportunities={acquisitionOpportunities} />
+        </div>
+
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:col-span-4 lg:grid-cols-4">
+          <InventoryAgingChart vehicles={vehicles} />
+          <ProfitTrendChart vehicles={vehicles} />
+          <RevenueTrendChart vehicles={vehicles} />
+          <LeadConversionChart />
+          <InventoryTurnRateChart />
+          <CashflowForecastChart transactions={transactions} />
+          <MonthlyRevenueChart vehicles={vehicles} />
+          <InventoryValueChart />
+        </div>
+      </div>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <KpiCard
