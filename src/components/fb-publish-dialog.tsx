@@ -131,7 +131,7 @@ export function FbPublishDialog({ vehicle, onPublished }: FbPublishDialogProps) 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button>
+        <Button className="w-full">
           <Share2 className="h-4 w-4" />
           Publish to Facebook Marketplace
         </Button>
