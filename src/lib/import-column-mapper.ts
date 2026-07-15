@@ -28,6 +28,15 @@ function normalizeHeader(header: string): string {
   return header.toLowerCase().replace(/[^a-z0-9]/g, "");
 }
 
+// Known real-world header variants that don't match a field's key/label
+// directly — discovered from an actual Airtable export (see
+// docs/superpowers/specs/2026-07-13-airtable-live-sync-design.md).
+const HEADER_ALIASES: Partial<Record<keyof VehicleFormData, string[]>> = {
+  my_cost: ["I Payed"],
+  repair_cost: ["Repair spend"],
+  online_channel: ["Online"],
+};
+
 export function parseCsvLine(line: string): string[] {
   const result: string[] = [];
   let current = "";
@@ -75,8 +84,12 @@ export function suggestColumnMapping(headers: string[]): ColumnMapping {
 
   for (const field of TARGET_FIELDS) {
     const fieldNormalized = normalizeHeader(field.key).replace(/_/g, "");
+    const aliasNormalized = (HEADER_ALIASES[field.key] ?? []).map(normalizeHeader);
     const match = normalizedHeaders.find(
-      (h) => h.normalized === fieldNormalized || h.normalized === normalizeHeader(field.label)
+      (h) =>
+        h.normalized === fieldNormalized ||
+        h.normalized === normalizeHeader(field.label) ||
+        aliasNormalized.includes(h.normalized)
     );
     if (match) mapping[field.key] = match.original;
   }
@@ -90,12 +103,18 @@ function parseValue(key: keyof VehicleFormData, value: string): unknown {
   switch (key) {
     case "year":
     case "mileage":
-    case "days_in_stock":
-      return parseInt(value, 10) || null;
+    case "days_in_stock": {
+      // These are always integers, so any "," or "." is a thousands
+      // separator (e.g. "179,000" or "160.000"), never a decimal point.
+      const parsed = parseInt(value.replace(/[,.]/g, ""), 10);
+      return Number.isNaN(parsed) ? null : parsed;
+    }
     case "my_cost":
     case "repair_cost":
-    case "retail_price":
-      return parseFloat(value.replace(/[$,]/g, "")) || null;
+    case "retail_price": {
+      const parsed = parseFloat(value.replace(/[$,]/g, ""));
+      return Number.isNaN(parsed) ? null : parsed;
+    }
     case "listed_online":
       return ["true", "yes", "1", "y"].includes(value.toLowerCase());
     default:
