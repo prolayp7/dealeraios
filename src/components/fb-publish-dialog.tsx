@@ -46,6 +46,7 @@ export function FbPublishDialog({ vehicle, onPublished }: FbPublishDialogProps) 
       setLoadingPreview(true);
       setError(null);
       setSuccessUrl(null);
+      setTab("edit");
     }
   }
 
@@ -175,6 +176,7 @@ export function FbPublishDialog({ vehicle, onPublished }: FbPublishDialogProps) 
                 type="button"
                 variant={tab === "edit" ? "default" : "outline"}
                 size="sm"
+                aria-pressed={tab === "edit"}
                 onClick={() => setTab("edit")}
               >
                 Edit
@@ -183,6 +185,7 @@ export function FbPublishDialog({ vehicle, onPublished }: FbPublishDialogProps) 
                 type="button"
                 variant={tab === "preview" ? "default" : "outline"}
                 size="sm"
+                aria-pressed={tab === "preview"}
                 onClick={() => setTab("preview")}
               >
                 Preview
