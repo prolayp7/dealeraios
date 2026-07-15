@@ -15,8 +15,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import type { Vehicle } from "@/lib/types";
-import { formatCurrency } from "@/lib/utils";
 import { LISTING_TEMPLATES, type ListingTemplateId } from "@/lib/listing-templates";
+import { ListingSimulator } from "@/components/listing-simulator";
 
 interface FbPublishDialogProps {
   vehicle: Vehicle;
@@ -37,6 +37,7 @@ export function FbPublishDialog({ vehicle, onPublished }: FbPublishDialogProps) 
   const [photos, setPhotos] = useState<string[]>([]);
   const [newPhotoUrl, setNewPhotoUrl] = useState("");
   const [template, setTemplate] = useState<ListingTemplateId>("marketplace");
+  const [tab, setTab] = useState<"edit" | "preview">("edit");
 
   const [prevOpen, setPrevOpen] = useState(open);
   if (open !== prevOpen) {
@@ -169,115 +170,138 @@ export function FbPublishDialog({ vehicle, onPublished }: FbPublishDialogProps) 
           </div>
         ) : (
           <div className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="fb-template">Listing Template</Label>
-              <select
-                id="fb-template"
-                value={template}
-                onChange={(e) => setTemplate(e.target.value as ListingTemplateId)}
-                className="flex h-10 w-full rounded-md border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500"
+            <div className="flex gap-2">
+              <Button
+                type="button"
+                variant={tab === "edit" ? "default" : "outline"}
+                size="sm"
+                onClick={() => setTab("edit")}
               >
-                {LISTING_TEMPLATES.map((t) => (
-                  <option key={t.id} value={t.id}>
-                    {t.label}
-                  </option>
-                ))}
-              </select>
+                Edit
+              </Button>
+              <Button
+                type="button"
+                variant={tab === "preview" ? "default" : "outline"}
+                size="sm"
+                onClick={() => setTab("preview")}
+              >
+                Preview
+              </Button>
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="fb-title">Title</Label>
-              <Input
-                id="fb-title"
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                maxLength={100}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="fb-price">Price</Label>
-              <Input
-                id="fb-price"
-                type="number"
-                value={price}
-                onChange={(e) => setPrice(e.target.value)}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="fb-description">Description</Label>
-              <Textarea
-                id="fb-description"
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                maxLength={500}
-                rows={5}
-              />
-              <p className="text-xs text-slate-500">
-                {description.length}/500 characters
-              </p>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="fb-location">Location (Zip Code)</Label>
-              <Input
-                id="fb-location"
-                placeholder="90210"
-                value={location}
-                onChange={(e) => setLocation(e.target.value)}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label>Category</Label>
-              <Input value="Vehicles" disabled />
-            </div>
-
-            <div className="space-y-2">
-              <Label>Photos</Label>
-              {validPhotos.length > 0 ? (
-                <div className="grid grid-cols-3 gap-2">
-                  {validPhotos.map((url, i) => (
-                    <div key={url + i} className="relative group">
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img
-                        src={url}
-                        alt={`Photo ${i + 1}`}
-                        className="h-20 w-full rounded-md object-cover border border-slate-700"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => removePhoto(i)}
-                        className="absolute right-1 top-1 rounded bg-black/70 px-1.5 text-xs text-white opacity-0 group-hover:opacity-100"
-                      >
-                        Remove
-                      </button>
-                    </div>
-                  ))}
+            {tab === "edit" ? (
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="fb-template">Listing Template</Label>
+                  <select
+                    id="fb-template"
+                    value={template}
+                    onChange={(e) => setTemplate(e.target.value as ListingTemplateId)}
+                    className="flex h-10 w-full rounded-md border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500"
+                  >
+                    {LISTING_TEMPLATES.map((t) => (
+                      <option key={t.id} value={t.id}>
+                        {t.label}
+                      </option>
+                    ))}
+                  </select>
                 </div>
-              ) : (
-                <p className="text-sm text-slate-500">No photos added yet.</p>
-              )}
-              <div className="flex gap-2">
-                <Input
-                  placeholder="https://example.com/photo.jpg"
-                  value={newPhotoUrl}
-                  onChange={(e) => setNewPhotoUrl(e.target.value)}
-                />
-                <Button type="button" variant="outline" onClick={addPhoto}>
-                  Add
-                </Button>
-              </div>
-            </div>
 
-            <div className="rounded-lg border border-slate-700 bg-slate-950/50 p-4 text-sm">
-              <p className="font-medium text-slate-300">Preview Summary</p>
-              <p className="mt-2 text-slate-400">
-                {title || "—"} · {formatCurrency(price ? parseFloat(price) : null)}
-              </p>
-              <p className="mt-1 line-clamp-3 text-slate-500">{description}</p>
-            </div>
+                <div className="space-y-2">
+                  <Label htmlFor="fb-title">Title</Label>
+                  <Input
+                    id="fb-title"
+                    value={title}
+                    onChange={(e) => setTitle(e.target.value)}
+                    maxLength={100}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="fb-price">Price</Label>
+                  <Input
+                    id="fb-price"
+                    type="number"
+                    value={price}
+                    onChange={(e) => setPrice(e.target.value)}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="fb-description">Description</Label>
+                  <Textarea
+                    id="fb-description"
+                    value={description}
+                    onChange={(e) => setDescription(e.target.value)}
+                    maxLength={500}
+                    rows={5}
+                  />
+                  <p className="text-xs text-slate-500">
+                    {description.length}/500 characters
+                  </p>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="fb-location">Location (Zip Code)</Label>
+                  <Input
+                    id="fb-location"
+                    placeholder="90210"
+                    value={location}
+                    onChange={(e) => setLocation(e.target.value)}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Category</Label>
+                  <Input value="Vehicles" disabled />
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Photos</Label>
+                  {validPhotos.length > 0 ? (
+                    <div className="grid grid-cols-3 gap-2">
+                      {validPhotos.map((url, i) => (
+                        <div key={url + i} className="relative group">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            src={url}
+                            alt={`Photo ${i + 1}`}
+                            className="h-20 w-full rounded-md object-cover border border-slate-700"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => removePhoto(i)}
+                            className="absolute right-1 top-1 rounded bg-black/70 px-1.5 text-xs text-white opacity-0 group-hover:opacity-100"
+                          >
+                            Remove
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-slate-500">No photos added yet.</p>
+                  )}
+                  <div className="flex gap-2">
+                    <Input
+                      placeholder="https://example.com/photo.jpg"
+                      value={newPhotoUrl}
+                      onChange={(e) => setNewPhotoUrl(e.target.value)}
+                    />
+                    <Button type="button" variant="outline" onClick={addPhoto}>
+                      Add
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <ListingSimulator
+                title={title}
+                description={description}
+                price={price}
+                photos={validPhotos}
+                location={location}
+              />
+            )}
 
             {error && (
               <div className="rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-300">
