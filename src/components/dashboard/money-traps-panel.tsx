@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { moneyTrapVehicles } from "@/lib/money-trap";
 import { getVehicleLabel } from "@/lib/vehicle-logic";
@@ -30,13 +31,14 @@ export function MoneyTrapsPanel({ vehicles }: { vehicles: Vehicle[] }) {
               href={`/inventory/${vehicle.id}`}
               className="flex items-center gap-3 rounded-lg hover:bg-slate-800/40"
             >
-              <div className="h-12 w-16 shrink-0 overflow-hidden rounded-md bg-slate-800">
+              <div className="relative h-12 w-16 shrink-0 overflow-hidden rounded-md bg-slate-800">
                 {vehicle.image_url && (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
+                  <Image
                     src={vehicle.image_url}
                     alt={getVehicleLabel(vehicle)}
-                    className="h-full w-full object-cover"
+                    fill
+                    sizes="64px"
+                    className="object-cover"
                   />
                 )}
               </div>

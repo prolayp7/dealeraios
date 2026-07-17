@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getPortfolioPricing } from "@/lib/ai-gm-recommendations";
 import { cn, formatCurrency } from "@/lib/utils";
@@ -35,13 +36,14 @@ export function PricingOpportunitiesPanel({ vehicles }: { vehicles: Vehicle[] })
                 href={`/inventory/${row.vehicleId}`}
                 className="flex items-center gap-3 rounded-lg hover:bg-slate-800/40"
               >
-                <div className="h-10 w-14 shrink-0 overflow-hidden rounded-md bg-slate-800">
+                <div className="relative h-10 w-14 shrink-0 overflow-hidden rounded-md bg-slate-800">
                   {vehicle?.image_url && (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
+                    <Image
                       src={vehicle.image_url}
                       alt={row.label}
-                      className="h-full w-full object-cover"
+                      fill
+                      sizes="56px"
+                      className="object-cover"
                     />
                   )}
                 </div>

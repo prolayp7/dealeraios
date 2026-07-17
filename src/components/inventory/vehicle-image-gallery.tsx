@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, type ReactNode } from "react";
+import Image from "next/image";
 import { Camera, Car, ChevronLeft, ChevronRight, Star } from "lucide-react";
 import { getCoverImageIndex } from "@/lib/vehicle-images";
 import { cn } from "@/lib/utils";
@@ -58,11 +59,13 @@ export function VehicleImageGallery({
     <div className={className}>
       <div className="relative aspect-[21/9] min-h-[200px] w-full overflow-hidden sm:aspect-[2/1]">
         {showImage ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
+          <Image
             key={currentUrl}
             src={currentUrl}
             alt={alt}
+            fill
+            sizes="(min-width: 640px) 90vw, 100vw"
+            priority={safeIndex === 0}
             className={cn(
               "h-full w-full object-cover brightness-[1.3]",
               imageClassName
@@ -128,10 +131,11 @@ export function VehicleImageGallery({
                 isCover && index !== safeIndex && "border-cyan-400/50"
               )}
             >
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
+              <Image
                 src={url}
                 alt=""
+                fill
+                sizes="96px"
                 className="h-full w-full object-cover"
               />
               {isCover && (

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
 import { Car } from "lucide-react";
 import type { Vehicle } from "@/lib/types";
 import { getVehicleLabel } from "@/lib/vehicle-logic";
@@ -35,13 +36,13 @@ export function VehiclePhoto({ vehicle, className, overlay }: VehiclePhotoProps)
   }
 
   return (
-    // eslint-disable-next-line @next/next/no-img-element
-    <img
+    <Image
       key={imageUrl}
       src={imageUrl}
       alt={label}
+      fill
+      sizes="(min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw"
       className={className ?? "h-full w-full object-cover"}
-      loading="lazy"
       onError={() => setFailedUrl(imageUrl)}
     />
   );
