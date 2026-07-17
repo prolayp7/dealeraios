@@ -4,6 +4,7 @@ import type { AiPriority, Vehicle } from "@/lib/types";
 import { getVehicleLabel } from "@/lib/vehicle-logic";
 import { cn, formatCurrency } from "@/lib/utils";
 import { VehiclePhoto } from "@/components/inventory/vehicle-photo";
+import { useVehiclePhotoHoverPreview } from "@/components/inventory/vehicle-photo-hover-preview";
 import { VehicleStatsGrid } from "@/components/inventory/vehicle-stats-grid";
 
 type UrgencyLevel = "LOW" | "MEDIUM" | "HIGH" | "URGENT";
@@ -122,6 +123,7 @@ export function InventoryCard({ vehicle }: InventoryCardProps) {
   const marketComparison = getMarketComparison(vehicle);
   const actionLabel = getActionLabel(vehicle.ai_priority);
   const title = getVehicleLabel(vehicle);
+  const { triggerRef, triggerHandlers, popover } = useVehiclePhotoHoverPreview(vehicle);
 
   const subtitle = [
     vehicle.vin ? `VIN ${vehicle.vin}` : "No VIN",
@@ -136,7 +138,11 @@ export function InventoryCard({ vehicle }: InventoryCardProps) {
       className="group block cursor-pointer rounded-2xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/60 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0b0e14]"
     >
       <article className="flex flex-col overflow-hidden rounded-2xl border border-white/[0.07] bg-[#0b0e14] shadow-[0_8px_32px_rgba(0,0,0,0.35)] transition-all duration-300 hover:border-white/[0.12] hover:shadow-[0_12px_40px_rgba(0,0,0,0.45)]">
-        <div className="relative aspect-[16/10] w-full shrink-0 overflow-hidden">
+        <div
+          ref={triggerRef}
+          {...triggerHandlers}
+          className="relative aspect-[16/10] w-full shrink-0 overflow-hidden"
+        >
           <VehiclePhoto
             vehicle={vehicle}
             overlay
@@ -180,6 +186,7 @@ export function InventoryCard({ vehicle }: InventoryCardProps) {
             </h3>
             <p className="mt-0.5 text-sm text-slate-300/90">{subtitle}</p>
           </div>
+          {popover}
         </div>
 
         <div className="flex flex-1 flex-col gap-3 px-4 pb-4 pt-3">
