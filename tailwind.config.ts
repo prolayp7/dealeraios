@@ -27,6 +27,10 @@ const config: Config = {
         },
         border: "hsl(var(--border))",
         ring: "hsl(var(--ring))",
+        success: "hsl(var(--success))",
+        warning: "hsl(var(--warning))",
+        danger: "hsl(var(--danger))",
+        info: "hsl(var(--info))",
         navy: {
           DEFAULT: "#0f172a",
           light: "#1e293b",

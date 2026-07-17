@@ -8,6 +8,7 @@ import { KpiCard } from "@/components/kpi-card";
 import { formatCurrency, formatPercent } from "@/lib/utils";
 import { exportReportCsv, exportReportExcel, exportReportPdf } from "@/lib/report-export";
 import type { DateRangeKey, ReportMetrics } from "@/lib/report-metrics";
+import { ReportsSkeleton } from "@/components/reports-skeleton";
 
 const RANGE_OPTIONS: { key: DateRangeKey; label: string }[] = [
   { key: "today", label: "Today" },
@@ -125,7 +126,7 @@ export default function ReportsPage() {
       </Card>
 
       {loading || !metrics ? (
-        <p className="text-sm text-slate-500">Loading report...</p>
+        <ReportsSkeleton />
       ) : (
         <>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">

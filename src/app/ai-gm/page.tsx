@@ -15,6 +15,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { formatCurrency } from "@/lib/utils";
+import { AiGmSkeleton } from "@/components/ai-gm-skeleton";
 import {
   DEFAULT_INACTIVITY_THRESHOLD_HOURS,
   getInactiveConversations,
@@ -84,11 +85,7 @@ export default function AiGmPage() {
   const inactiveConversations = getInactiveConversations(conversations, inactivityThreshold);
 
   if (loading) {
-    return (
-      <div className="flex h-64 items-center justify-center">
-        <p className="text-slate-400">Loading AI GM...</p>
-      </div>
-    );
+    return <AiGmSkeleton />;
   }
 
   return (

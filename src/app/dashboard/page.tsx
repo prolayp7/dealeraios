@@ -2,8 +2,16 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { MessageCircle } from "lucide-react";
+import {
+  AlertTriangle,
+  Layers,
+  MessageCircle,
+  TrendingUp,
+  Users,
+  Wallet,
+} from "lucide-react";
 import { usePageHeader } from "@/components/header";
+import { DashboardSkeleton } from "@/components/dashboard-skeleton";
 import { InventoryCard } from "@/components/inventory/inventory-card";
 import { InventoryFilterTabs } from "@/components/inventory/inventory-filter-tabs";
 import { InventoryAgingWidget } from "@/components/inventory-aging-widget";
@@ -11,6 +19,7 @@ import { KpiCard } from "@/components/kpi-card";
 import { MissionBanner } from "@/components/mission-banner";
 import { MoneyTrapWidget } from "@/components/money-trap-widget";
 import { RevenueTrendWidget } from "@/components/revenue-trend-widget";
+import { StatCard } from "@/components/stat-card";
 import { VoiceSaleEntry } from "@/components/voice-sale-entry";
 import { Card, CardContent } from "@/components/ui/card";
 import { MoneyTrapsPanel } from "@/components/dashboard/money-traps-panel";
@@ -31,6 +40,13 @@ import { MonthlyRevenueChart } from "@/components/dashboard/monthly-revenue-char
 import { InventoryValueChart } from "@/components/dashboard/inventory-value-chart";
 import { computeAvailableCash } from "@/lib/available-cash";
 import {
+  computeDashboardTrends,
+  formatTrendLabel,
+  trendDirection,
+} from "@/lib/dashboard-trends";
+import { moneyTrapVehicles } from "@/lib/money-trap";
+import { buildMissionBrief } from "@/lib/mission-brief";
+import {
   countByFilter,
   matchesFilter,
   type FilterTab,
@@ -39,6 +55,8 @@ import type {
   AcquisitionOpportunity,
   AiPriority,
   CashflowTransaction,
+  ConversationSummary,
+  Profile,
   Vehicle,
 } from "@/lib/types";
 import { formatCurrency, formatNumber, formatPercent } from "@/lib/utils";
@@ -71,6 +89,8 @@ export default function DashboardPage() {
   const [acquisitionOpportunities, setAcquisitionOpportunities] = useState<
     AcquisitionOpportunity[]
   >([]);
+  const [conversations, setConversations] = useState<ConversationSummary[]>([]);
+  const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
   const [unreadMessages, setUnreadMessages] = useState(0);
   const [activeFilter, setActiveFilter] = useState<FilterTab>("action");
@@ -99,6 +119,13 @@ export default function DashboardPage() {
         if (Array.isArray(data)) setAcquisitionOpportunities(data);
       })
       .catch(console.error);
+
+    fetch("/api/messenger/conversations")
+      .then((res) => res.json())
+      .then((data) => {
+        if (Array.isArray(data)) setConversations(data);
+      })
+      .catch(console.error);
   };
 
   useEffect(() => {
@@ -108,13 +135,18 @@ export default function DashboardPage() {
       .then((r) => r.json())
       .then((data) => setUnreadMessages(data.unread_count ?? 0))
       .catch(() => setUnreadMessages(0));
+
+    fetch("/api/auth/me")
+      .then((r) => r.json())
+      .then((data) => {
+        if (data && !data.error) setProfile(data);
+      })
+      .catch(console.error);
   }, []);
 
+  const userName = profile?.full_name || profile?.email?.split("@")[0] || "there";
+
   const totalVehicles = vehicles.length;
-  const totalInvested = vehicles.reduce(
-    (sum, v) => sum + (v.total_invested ?? 0),
-    0
-  );
   const retailValue = vehicles.reduce(
     (sum, v) => sum + (v.retail_price ?? 0),
     0
@@ -134,6 +166,18 @@ export default function DashboardPage() {
   );
   const activeListings = vehicles.filter((v) => v.listed_online).length;
   const inactiveListings = totalVehicles - activeListings;
+  const cashTrapped = useMemo(
+    () =>
+      moneyTrapVehicles(vehicles).reduce(
+        (sum, v) => sum + (v.total_invested ?? 0),
+        0
+      ),
+    [vehicles]
+  );
+  const trends = useMemo(
+    () => computeDashboardTrends(vehicles, transactions),
+    [vehicles, transactions]
+  );
   const avgDaysInStock =
     totalVehicles > 0
       ? Math.round(
@@ -152,6 +196,11 @@ export default function DashboardPage() {
 
   const filterCounts = useMemo(() => countByFilter(vehicles), [vehicles]);
 
+  const missionBrief = useMemo(
+    () => buildMissionBrief(vehicles, conversations, cashTrapped),
+    [vehicles, conversations, cashTrapped]
+  );
+
   const filteredVehicles = useMemo(
     () =>
       vehicles
@@ -165,38 +214,18 @@ export default function DashboardPage() {
   );
 
   if (loading) {
-    return (
-      <div className="flex h-64 items-center justify-center">
-        <p className="text-slate-400">Loading dashboard...</p>
-      </div>
-    );
+    return <DashboardSkeleton />;
   }
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-5">
       <MissionBanner
-        targetAmount={14200}
-        missionScore={94}
-        movesQueued={4}
-        newLeads={2}
-        actions={[
-          {
-            label: "List 2014 Nissan Juke on all 6 platforms",
-            sublabel: "+11 leads expected",
-          },
-          {
-            label: "Reduce 2009 BMW M3 by $1,100",
-            sublabel: "Sale ETA 10 days",
-          },
-          {
-            label: "Follow up Marcus Greene — financing",
-            sublabel: "Close $4,600 net",
-          },
-          {
-            label: "Send 2010 VW Tiguan to auction",
-            sublabel: "Recover $6,800 cash",
-          },
-        ]}
+        userName={userName}
+        targetAmount={missionBrief.targetAmount}
+        missionScore={missionBrief.missionScore}
+        movesQueued={missionBrief.movesQueued}
+        newLeads={missionBrief.newLeads}
+        actions={missionBrief.actions}
       />
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-5">
@@ -226,17 +255,55 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <KpiCard
-          title="Available Cash"
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
+        <StatCard
+          icon={Wallet}
+          iconClassName="bg-success/10 text-success"
+          label="Cash Available"
           value={formatCurrency(availableCash)}
-          subtitle="Auto-calculated from purchases, repairs & sales"
+          trendLabel={formatTrendLabel(trends.cashAvailable.changePct)}
+          trendDirection={trendDirection(trends.cashAvailable.changePct)}
+          trendSentiment={trends.cashAvailable.sentiment}
         />
-        <KpiCard title="Inventory Value" value={formatCurrency(retailValue)} />
-        <KpiCard title="Inventory Cost" value={formatCurrency(totalInvested)} />
-        <KpiCard
-          title="Expected Profit"
+        <StatCard
+          icon={TrendingUp}
+          iconClassName="bg-info/10 text-info"
+          label="Expected Profit"
           value={formatCurrency(expectedProfit)}
+          trendLabel={formatTrendLabel(trends.expectedProfit.changePct)}
+          trendDirection={trendDirection(trends.expectedProfit.changePct)}
+          trendSentiment={trends.expectedProfit.sentiment}
+        />
+        <StatCard
+          icon={Layers}
+          iconClassName="bg-violet-500/10 text-violet-400"
+          label="Inventory Value"
+          value={formatCurrency(retailValue)}
+          trendLabel={formatTrendLabel(trends.inventoryValue.changePct)}
+          trendDirection={trendDirection(trends.inventoryValue.changePct)}
+          trendSentiment={trends.inventoryValue.sentiment}
+        />
+        <StatCard
+          icon={AlertTriangle}
+          iconClassName="bg-warning/10 text-warning"
+          label="Cash Trapped"
+          value={formatCurrency(cashTrapped)}
+          trendLabel={formatTrendLabel(trends.cashTrapped.changePct)}
+          trendDirection={trendDirection(trends.cashTrapped.changePct)}
+          trendSentiment={trends.cashTrapped.sentiment}
+        />
+        <StatCard
+          icon={Users}
+          iconClassName="bg-sky-500/10 text-sky-400"
+          label="Active Listings"
+          value={String(activeListings)}
+          trendLabel={
+            trends.newActiveListings > 0
+              ? `${trends.newActiveListings} new`
+              : "No new listings"
+          }
+          trendDirection={trends.newActiveListings > 0 ? "up" : "flat"}
+          trendSentiment={trends.newActiveListings > 0 ? "good" : "neutral"}
         />
       </div>
 
@@ -257,13 +324,13 @@ export default function DashboardPage() {
       </div>
 
       <Link href="/messenger">
-        <Card className="border-orange-500/30 bg-orange-500/5 transition-colors hover:bg-orange-500/10">
+        <Card className="border-primary/30 bg-primary/5 transition-colors hover:bg-primary/10">
           <CardContent className="flex items-center justify-between p-4">
             <div className="flex items-center gap-3">
-              <MessageCircle className="h-8 w-8 text-orange-500" />
+              <MessageCircle className="h-8 w-8 text-primary" />
               <div>
-                <p className="font-semibold text-white">Messenger Inbox</p>
-                <p className="text-sm text-slate-400">
+                <p className="font-semibold text-foreground">Messenger Inbox</p>
+                <p className="text-sm text-muted-foreground">
                   {unreadMessages > 0
                     ? `${unreadMessages} unread message${unreadMessages !== 1 ? "s" : ""}`
                     : "All caught up"}
@@ -271,7 +338,7 @@ export default function DashboardPage() {
               </div>
             </div>
             {unreadMessages > 0 && (
-              <span className="rounded-full bg-orange-500 px-3 py-1 text-sm font-bold text-white">
+              <span className="rounded-full bg-primary px-3 py-1 text-sm font-bold text-primary-foreground">
                 {unreadMessages}
               </span>
             )}
@@ -285,10 +352,10 @@ export default function DashboardPage() {
         {PRIORITY_ORDER.map((priority) => (
           <Card key={priority}>
             <CardContent className="p-4">
-              <p className="text-sm text-slate-400">
+              <p className="text-sm text-muted-foreground">
                 {PRIORITY_LABELS[priority]}
               </p>
-              <p className="mt-1 text-2xl font-bold text-white">
+              <p className="mt-1 text-2xl font-bold text-foreground">
                 {priorityCounts[priority]}
               </p>
             </CardContent>
@@ -298,10 +365,10 @@ export default function DashboardPage() {
 
       <section className="space-y-4">
         <div>
-          <h2 className="text-xl font-bold tracking-tight text-white">
+          <h2 className="text-xl font-bold tracking-tight text-foreground">
             Daily Action Board
           </h2>
-          <p className="mt-1 text-sm text-slate-400">
+          <p className="mt-1 text-sm text-muted-foreground">
             {filterCounts.action} vehicle{filterCounts.action !== 1 ? "s" : ""}{" "}
             need attention today
           </p>
@@ -314,9 +381,9 @@ export default function DashboardPage() {
         />
 
         {filteredVehicles.length === 0 ? (
-          <div className="flex h-52 flex-col items-center justify-center rounded-2xl border border-dashed border-white/10 px-4 text-center">
-            <p className="font-medium text-white">No vehicles match this filter</p>
-            <p className="mt-1 text-sm text-slate-400">
+          <div className="flex h-52 flex-col items-center justify-center rounded-2xl border border-dashed border-border px-4 text-center">
+            <p className="font-medium text-foreground">No vehicles match this filter</p>
+            <p className="mt-1 text-sm text-muted-foreground">
               {activeFilter === "action"
                 ? "All vehicles are on hold — nothing needs action right now."
                 : "Try a different filter."}

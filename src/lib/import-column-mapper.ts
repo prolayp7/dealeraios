@@ -22,6 +22,7 @@ export const TARGET_FIELDS: TargetField[] = [
   { key: "bought_date", label: "Bought Date" },
   { key: "days_in_stock", label: "Days In Stock" },
   { key: "notes", label: "Notes" },
+  { key: "image_url", label: "Photos" },
 ];
 
 function normalizeHeader(header: string): string {
@@ -35,6 +36,7 @@ const HEADER_ALIASES: Partial<Record<keyof VehicleFormData, string[]>> = {
   my_cost: ["I Payed"],
   repair_cost: ["Repair spend"],
   online_channel: ["Online"],
+  image_url: ["Photo", "Photo URL", "Image", "Images", "Picture", "Pictures"],
 };
 
 export function parseCsvLine(line: string): string[] {
@@ -97,6 +99,13 @@ export function suggestColumnMapping(headers: string[]): ColumnMapping {
   return mapping;
 }
 
+// Extracts photo URLs from a cell. Handles a plain comma-separated URL list
+// as well as Airtable's attachment-field CSV export, which squashes each
+// photo into "filename.jpg (https://v5.airtableusercontent.com/...)".
+function parseImageUrls(value: string): string[] {
+  return value.match(/https?:\/\/[^\s(),]+/g) ?? [];
+}
+
 function parseValue(key: keyof VehicleFormData, value: string): unknown {
   if (!value) return null;
 
@@ -140,6 +149,15 @@ export function applyColumnMapping(
       if (!header) continue;
       const index = headerIndex.get(header);
       if (index == null || row[index] === undefined) continue;
+
+      if (field.key === "image_url") {
+        const urls = parseImageUrls(row[index]);
+        if (urls.length === 0) continue;
+        vehicle.image_urls = urls;
+        vehicle.image_url = urls[0];
+        continue;
+      }
+
       (vehicle as Record<string, unknown>)[field.key] = parseValue(
         field.key,
         row[index]

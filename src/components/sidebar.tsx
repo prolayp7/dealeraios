@@ -12,7 +12,6 @@ import {
   Menu,
   MessageCircle,
   Package,
-  Phone,
   ScanSearch,
   Settings,
   Share2,
@@ -63,7 +62,6 @@ const navGroups: NavGroup[] = [
   {
     label: "Sales & Cash",
     items: [
-      { href: "/sales-command", label: "Sales Command", icon: Phone },
       { href: "/customers", label: "Lead CRM", icon: Users },
       { href: "/cashflow", label: "Cashflow", icon: Wallet },
       {

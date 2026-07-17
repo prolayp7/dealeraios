@@ -9,7 +9,8 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { Bell, Calendar, ChevronDown, Filter, LogOut } from "lucide-react";
+import Link from "next/link";
+import { Bell, Calendar, ChevronDown, Filter, LogOut, User } from "lucide-react";
 import { useLogout } from "@/hooks/use-logout";
 
 interface HeaderConfig {
@@ -45,10 +46,25 @@ export function usePageHeader(config: HeaderConfig) {
   }, [setConfig, title, subtitle, notificationCount, userInitial]);
 }
 
+interface AccountProfile {
+  full_name: string | null;
+  email: string;
+}
+
 function UserMenu({ userInitial }: { userInitial?: string }) {
   const [open, setOpen] = useState(false);
+  const [profile, setProfile] = useState<AccountProfile | null>(null);
   const { logout, loggingOut } = useLogout();
   const menuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    fetch("/api/auth/me")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data && !data.error) setProfile(data);
+      })
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     if (!open) return;
@@ -61,6 +77,9 @@ function UserMenu({ userInitial }: { userInitial?: string }) {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [open]);
 
+  const displayName = profile?.full_name || profile?.email || "";
+  const initial = userInitial ?? (displayName ? displayName.charAt(0).toUpperCase() : "?");
+
   return (
     <div className="relative" ref={menuRef}>
       <button
@@ -69,11 +88,29 @@ function UserMenu({ userInitial }: { userInitial?: string }) {
         aria-expanded={open}
         className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-blue-700 text-sm font-semibold text-white transition-opacity hover:opacity-90"
       >
-        {userInitial ?? "D"}
+        {initial}
       </button>
 
       {open && (
-        <div className="absolute right-0 top-11 z-50 w-40 overflow-hidden rounded-lg border border-slate-800 bg-navy-dark shadow-lg">
+        <div className="absolute right-0 top-11 z-50 w-56 overflow-hidden rounded-lg border border-slate-800 bg-navy-dark shadow-lg">
+          {displayName && (
+            <div className="border-b border-slate-800 px-3 py-2">
+              <p className="truncate text-sm font-medium text-slate-100">
+                {profile?.full_name || "Unnamed user"}
+              </p>
+              {profile?.email && (
+                <p className="truncate text-xs text-slate-500">{profile.email}</p>
+              )}
+            </div>
+          )}
+          <Link
+            href="/profile"
+            onClick={() => setOpen(false)}
+            className="flex w-full items-center gap-2 px-3 py-2 text-sm text-slate-200 transition-colors hover:bg-slate-800"
+          >
+            <User className="h-4 w-4 text-slate-400" />
+            My Profile
+          </Link>
           <button
             onClick={logout}
             disabled={loggingOut}

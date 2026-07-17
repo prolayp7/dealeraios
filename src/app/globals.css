@@ -14,6 +14,10 @@
     --muted-foreground: 215 20% 65%;
     --border: 217 33% 17%;
     --ring: 24 95% 53%;
+    --success: 160 84% 39%;
+    --warning: 38 92% 50%;
+    --danger: 0 84% 60%;
+    --info: 217 91% 60%;
   }
 
   * {

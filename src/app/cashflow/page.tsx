@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   Table,
   TableBody,
@@ -107,7 +108,11 @@ export default function CashflowPage() {
           <CardTitle>Available Cash</CardTitle>
         </CardHeader>
         <CardContent>
-          <p className="text-3xl font-bold text-white">{formatCurrency(availableCash)}</p>
+          {loading ? (
+            <Skeleton className="h-9 w-40" />
+          ) : (
+            <p className="text-3xl font-bold text-white">{formatCurrency(availableCash)}</p>
+          )}
         </CardContent>
       </Card>
 
@@ -171,7 +176,19 @@ export default function CashflowPage() {
           <CardTitle>Future Cashflow Forecast</CardTitle>
         </CardHeader>
         <CardContent>
-          {!forecast.hasEnoughHistory ? (
+          {loading ? (
+            <div className="space-y-3">
+              <Skeleton className="h-4 w-48" />
+              <div className="flex h-24 items-end gap-3">
+                {Array.from({ length: 4 }).map((_, i) => (
+                  <div key={i} className="flex flex-1 flex-col items-center gap-1">
+                    <Skeleton className="w-full" style={{ height: `${40 + (i % 3) * 16}px` }} />
+                    <Skeleton className="h-2.5 w-6" />
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : !forecast.hasEnoughHistory ? (
             <p className="text-sm text-slate-500">
               Not enough transaction history yet to project a trend — add
               transactions over time and this will fill in.
@@ -204,7 +221,34 @@ export default function CashflowPage() {
         </CardHeader>
         <CardContent>
           {loading ? (
-            <p className="text-sm text-slate-500">Loading...</p>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Date</TableHead>
+                  <TableHead>Type</TableHead>
+                  <TableHead>Description</TableHead>
+                  <TableHead>Amount</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {Array.from({ length: 5 }).map((_, i) => (
+                  <TableRow key={i}>
+                    <TableCell>
+                      <Skeleton className="h-4 w-20" />
+                    </TableCell>
+                    <TableCell>
+                      <Skeleton className="h-5 w-24 rounded-full" />
+                    </TableCell>
+                    <TableCell>
+                      <Skeleton className="h-4 w-32" />
+                    </TableCell>
+                    <TableCell>
+                      <Skeleton className="h-4 w-16" />
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
           ) : (
             <Table>
               <TableHeader>

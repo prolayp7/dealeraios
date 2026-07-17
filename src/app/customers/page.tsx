@@ -6,6 +6,7 @@ import { Users } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { Skeleton } from "@/components/ui/skeleton";
 import type { ConversationSummary, Customer, Tag } from "@/lib/types";
 
 const HOT_LEAD_TAG_NAME = "Hot Lead";
@@ -103,7 +104,22 @@ export default function CustomersPage() {
       </div>
 
       {loading ? (
-        <p className="text-sm text-slate-500">Loading leads...</p>
+        <div className="space-y-3">
+          {Array.from({ length: 5 }).map((_, i) => (
+            <Card key={i}>
+              <CardContent className="flex flex-wrap items-center justify-between gap-3 p-4">
+                <div className="min-w-0 flex-1 space-y-2">
+                  <Skeleton className="h-4 w-40" />
+                  <Skeleton className="h-3 w-56" />
+                </div>
+                <div className="flex items-center gap-2">
+                  <Skeleton className="h-5 w-16 rounded-full" />
+                  <Skeleton className="h-8 w-32 rounded-md" />
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
       ) : sortedCustomers.length === 0 ? (
         <p className="text-sm text-slate-500">No leads yet.</p>
       ) : (

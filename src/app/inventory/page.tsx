@@ -5,6 +5,7 @@ import { Plus } from "lucide-react";
 import { AddVehicleDialog } from "@/components/add-vehicle-dialog";
 import { CsvImportButton } from "@/components/csv-import-button";
 import { InventoryCard } from "@/components/inventory/inventory-card";
+import { InventoryCardSkeleton } from "@/components/inventory/inventory-card-skeleton";
 import { InventoryFilterTabs } from "@/components/inventory/inventory-filter-tabs";
 import { Button } from "@/components/ui/button";
 import {
@@ -64,8 +65,10 @@ export default function InventoryPage() {
       />
 
       {loading ? (
-        <div className="flex h-52 items-center justify-center rounded-2xl border border-white/[0.08] bg-[hsl(222,47%,9%)]">
-          <p className="text-slate-400">Loading inventory...</p>
+        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <InventoryCardSkeleton key={i} />
+          ))}
         </div>
       ) : filteredVehicles.length === 0 ? (
         <div className="flex h-52 flex-col items-center justify-center rounded-2xl border border-dashed border-white/10 px-4 text-center">

@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Skeleton } from "@/components/ui/skeleton";
 import { formatCurrency } from "@/lib/utils";
 import type { AcquisitionOpportunity } from "@/lib/types";
 
@@ -121,7 +122,24 @@ export default function AcquisitionPage() {
         </CardHeader>
         <CardContent>
           {loading ? (
-            <p className="text-sm text-slate-500">Loading...</p>
+            <div className="space-y-2">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <div
+                  key={i}
+                  className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-slate-800 px-3 py-2"
+                >
+                  <div className="min-w-0 flex-1 space-y-2">
+                    <Skeleton className="h-4 w-40" />
+                    <Skeleton className="h-3 w-56" />
+                  </div>
+                  <div className="space-y-2 text-right">
+                    <Skeleton className="ml-auto h-3 w-24" />
+                    <Skeleton className="ml-auto h-3 w-20" />
+                  </div>
+                  <Skeleton className="h-5 w-14 rounded-full" />
+                </div>
+              ))}
+            </div>
           ) : opportunities.length === 0 ? (
             <p className="text-sm text-slate-500">
               No opportunities discovered yet — run a scan above.

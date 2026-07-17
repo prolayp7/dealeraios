@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { Rocket } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Combobox } from "@/components/ui/combobox";
 import { FbPublishDialog } from "@/components/fb-publish-dialog";
 import { FbListingBadge } from "@/components/fb-listing-badge";
 import { getVehicleLabel } from "@/lib/vehicle-logic";
@@ -68,17 +69,13 @@ export default function ListEverywherePage() {
           {loading ? (
             <p className="text-sm text-slate-500">Loading vehicles...</p>
           ) : (
-            <select
+            <Combobox
+              className="min-w-64"
               value={selectedId}
-              onChange={(e) => setSelectedId(e.target.value)}
-              className="h-10 min-w-64 rounded-md border border-slate-700 bg-slate-950 px-3 text-sm text-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500"
-            >
-              {vehicles.map((v) => (
-                <option key={v.id} value={v.id}>
-                  {getVehicleLabel(v)}
-                </option>
-              ))}
-            </select>
+              onChange={setSelectedId}
+              placeholder="Search vehicles..."
+              options={vehicles.map((v) => ({ value: v.id, label: getVehicleLabel(v) }))}
+            />
           )}
         </CardContent>
       </Card>
@@ -94,7 +91,7 @@ export default function ListEverywherePage() {
                 <Badge variant="secondary">Not connected</Badge>
               )}
             </CardHeader>
-            <CardContent className="space-y-3">
+            <CardContent className="flex flex-col items-start gap-3">
               {platform.id === "facebook" && selectedVehicle && (
                 <>
                   <FbListingBadge status={selectedVehicle.fb_listing_status} />

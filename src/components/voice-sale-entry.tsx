@@ -107,7 +107,7 @@ export function VoiceSaleEntry({ onSold }: VoiceSaleEntryProps) {
         <CardTitle>Voice Sale Entry</CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">
-        <p className="text-sm text-slate-400">
+        <p className="text-sm text-muted-foreground">
           Say something like &ldquo;I sold the 2016 Volvo XC90 for $4000&rdquo; —
           browser microphone only, no phone integration.
         </p>
@@ -139,10 +139,10 @@ export function VoiceSaleEntry({ onSold }: VoiceSaleEntryProps) {
           </Button>
         </div>
 
-        {error && <p className="text-sm text-red-400">{error}</p>}
+        {error && <p className="text-sm text-danger">{error}</p>}
 
         {result && (
-          <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm text-emerald-300">
+          <div className="rounded-lg border border-success/30 bg-success/10 p-3 text-sm text-success">
             Sold {result.vehicle.year} {result.vehicle.make} {result.vehicle.model} for{" "}
             {formatCurrency(result.soldPrice)} — net profit {formatCurrency(result.netProfit)}.
             Archived, listings removed, cashflow updated.

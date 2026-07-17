@@ -12,14 +12,14 @@ export function KpiCard({ title, value, subtitle, className }: KpiCardProps) {
   return (
     <Card className={cn("", className)}>
       <CardHeader className="pb-2">
-        <CardTitle className="text-sm font-medium text-slate-400">
+        <CardTitle className="text-sm font-medium text-muted-foreground">
           {title}
         </CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="text-2xl font-bold text-white">{value}</div>
+        <div className="text-2xl font-bold text-foreground">{value}</div>
         {subtitle && (
-          <p className="mt-1 text-xs text-slate-500">{subtitle}</p>
+          <p className="mt-1 text-xs text-muted-foreground">{subtitle}</p>
         )}
       </CardContent>
     </Card>

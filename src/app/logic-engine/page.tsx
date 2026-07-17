@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import type { LogicRule } from "@/lib/logic-engine/types";
+import { LogicEngineSkeleton } from "@/components/logic-engine-skeleton";
 
 const CATEGORY_COLORS: Record<string, string> = {
   inventory: "bg-slate-700 text-slate-200",
@@ -91,11 +92,7 @@ export default function LogicEnginePage() {
   const activeRules = rules.filter((rule) => rule.active);
 
   if (loading) {
-    return (
-      <div className="flex h-64 items-center justify-center">
-        <p className="text-slate-400">Loading logic engine...</p>
-      </div>
-    );
+    return <LogicEngineSkeleton />;
   }
 
   return (

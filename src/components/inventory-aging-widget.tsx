@@ -10,10 +10,10 @@ import type { Vehicle } from "@/lib/types";
 const BUCKET_ORDER: AgingBucket[] = ["fresh", "healthy", "aging", "critical"];
 
 const BUCKET_STYLES: Record<AgingBucket, string> = {
-  fresh: "bg-emerald-500/15 text-emerald-300",
-  healthy: "bg-sky-500/15 text-sky-300",
-  aging: "bg-amber-500/15 text-amber-300",
-  critical: "bg-red-500/15 text-red-300",
+  fresh: "bg-success/15 text-success",
+  healthy: "bg-info/15 text-info",
+  aging: "bg-warning/15 text-warning",
+  critical: "bg-danger/15 text-danger",
 };
 
 export function InventoryAgingWidget({ vehicles }: { vehicles: Vehicle[] }) {
@@ -22,7 +22,7 @@ export function InventoryAgingWidget({ vehicles }: { vehicles: Vehicle[] }) {
   return (
     <Card>
       <CardHeader className="pb-2">
-        <CardTitle className="text-sm font-medium text-slate-400">
+        <CardTitle className="text-sm font-medium text-muted-foreground">
           Inventory Aging
         </CardTitle>
       </CardHeader>
