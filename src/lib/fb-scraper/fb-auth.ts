@@ -1,5 +1,5 @@
 import type { Cookie, Page } from "playwright-core";
-import { saveFbCookies } from "./cookies";
+import { loadFbCookies, saveFbCookies } from "./cookies";
 import { ScraperError } from "./types";
 
 type BrowserExtensionCookie = {
@@ -64,15 +64,7 @@ export async function isLoggedIn(page: Page): Promise<boolean> {
   );
 }
 
-function parseCookiesFromEnv(): Cookie[] {
-  const rawCookies = process.env.FB_COOKIES;
-  if (!rawCookies) {
-    throw new ScraperError(
-      "Missing FB_COOKIES in environment",
-      "CONFIG"
-    );
-  }
-
+function parseCookiesFromEnv(rawCookies: string): Cookie[] {
   let parsedCookies: BrowserExtensionCookie[];
   try {
     parsedCookies = JSON.parse(rawCookies) as BrowserExtensionCookie[];
@@ -93,6 +85,23 @@ function parseCookiesFromEnv(): Cookie[] {
   return mapExtensionCookies(parsedCookies);
 }
 
+async function resolveCookies(): Promise<Cookie[]> {
+  const rawCookies = process.env.FB_COOKIES;
+  if (rawCookies) {
+    return parseCookiesFromEnv(rawCookies);
+  }
+
+  const savedCookies = await loadFbCookies();
+  if (savedCookies.length > 0) {
+    return savedCookies;
+  }
+
+  throw new ScraperError(
+    "Missing FB_COOKIES in environment and no saved session in data/fb-session.json",
+    "CONFIG"
+  );
+}
+
 export async function exportCookies(page: Page): Promise<Cookie[]> {
   return page.context().cookies();
 }
@@ -103,7 +112,7 @@ export async function applyCookies(page: Page, cookies: Cookie[]): Promise<void>
 }
 
 export async function injectCookies(page: Page): Promise<void> {
-  const cookies = parseCookiesFromEnv();
+  const cookies = await resolveCookies();
 
   await page.goto("https://www.facebook.com", {
     waitUntil: "domcontentloaded",
