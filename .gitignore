@@ -42,3 +42,7 @@ docs/*
 deploy.sh
 creds.txt
 .superpowers/
+
+
+# Others
+package.json-back

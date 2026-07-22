@@ -60,12 +60,13 @@ export function exportReportCsv(metrics: ReportMetrics, filename = "report.csv")
 }
 
 export async function exportReportExcel(metrics: ReportMetrics, filename = "report.xlsx") {
-  const XLSX = await import("xlsx");
+  const { default: ExcelJS } = await import("exceljs");
   const rows = buildRows(metrics);
-  const worksheet = XLSX.utils.aoa_to_sheet([["Metric", "Value"], ...rows]);
-  const workbook = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(workbook, worksheet, "Report");
-  const buffer = XLSX.write(workbook, { bookType: "xlsx", type: "array" });
+  const workbook = new ExcelJS.Workbook();
+  const worksheet = workbook.addWorksheet("Report");
+  worksheet.addRow(["Metric", "Value"]);
+  rows.forEach((row) => worksheet.addRow(row));
+  const buffer = await workbook.xlsx.writeBuffer();
   downloadBlob(
     new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }),
     filename
