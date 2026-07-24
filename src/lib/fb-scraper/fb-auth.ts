@@ -133,7 +133,14 @@ export async function loginToFacebook(page: Page): Promise<void> {
   });
   await page.waitForLoadState("networkidle").catch(() => {});
 
-  await page.screenshot({ path: "/tmp/fb-cookie-result.png" });
+  try {
+    await page.screenshot({ path: "/tmp/fb-cookie-result.png", timeout: 10000 });
+  } catch (error) {
+    console.warn(
+      "Debug screenshot failed (non-fatal):",
+      error instanceof Error ? error.message : error
+    );
+  }
   console.log("Cookie injection result URL:", page.url());
 
   if (await isLoggedIn(page)) {

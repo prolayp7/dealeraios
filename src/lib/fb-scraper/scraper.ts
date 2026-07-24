@@ -339,7 +339,14 @@ function extractLocation(text: string): string | null {
 }
 
 async function logMarketplaceSearchState(page: Page): Promise<void> {
-  await page.screenshot({ path: "/tmp/fb-marketplace.png" });
+  try {
+    await page.screenshot({ path: "/tmp/fb-marketplace.png", timeout: 10000 });
+  } catch (error) {
+    console.warn(
+      "Debug screenshot failed (non-fatal):",
+      error instanceof Error ? error.message : error
+    );
+  }
   console.log("Marketplace URL:", page.url());
   console.log("Marketplace title:", await page.title());
   await logListingSelectorCounts(page);
