@@ -1,3 +1,5 @@
+import type { ColumnMapping } from "./import-column-mapper";
+
 export type AiPriority =
   | "LIST NOW"
   | "HOLD"
@@ -206,12 +208,24 @@ export interface MarketplaceAccount {
   label: string;
 }
 
+export interface AirtableConfig {
+  enabled: boolean;
+  personal_access_token: string;
+  base_id: string;
+  table_name: string;
+  last_modified_field: string;
+  column_mapping: ColumnMapping;
+  last_synced_at: string | null;
+  last_sync_error: string | null;
+}
+
 export interface DealershipSettings {
   dealership_id: string;
   company: { name?: string; address?: string; phone?: string };
   inactivity_threshold_hours: number;
   ai_settings: { default_listing_template?: string };
   marketplace_accounts: MarketplaceAccount[];
+  airtable_config: AirtableConfig;
   updated_at: string;
 }
 
