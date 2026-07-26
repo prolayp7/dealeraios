@@ -22,6 +22,10 @@ export const TARGET_FIELDS: TargetField[] = [
   { key: "bought_date", label: "Bought Date" },
   { key: "days_in_stock", label: "Days In Stock" },
   { key: "notes", label: "Notes" },
+  { key: "color", label: "Color" },
+  { key: "code", label: "Code" },
+  { key: "lot_location", label: "Location (Lot)" },
+  { key: "sold_date", label: "Sold Date" },
   { key: "image_url", label: "Photos" },
 ];
 
@@ -36,6 +40,7 @@ const HEADER_ALIASES: Partial<Record<keyof VehicleFormData, string[]>> = {
   my_cost: ["I Payed"],
   repair_cost: ["Repair spend"],
   online_channel: ["Online"],
+  lot_location: ["Where"],
   image_url: ["Photo", "Photo URL", "Image", "Images", "Picture", "Pictures"],
 };
 
@@ -102,11 +107,11 @@ export function suggestColumnMapping(headers: string[]): ColumnMapping {
 // Extracts photo URLs from a cell. Handles a plain comma-separated URL list
 // as well as Airtable's attachment-field CSV export, which squashes each
 // photo into "filename.jpg (https://v5.airtableusercontent.com/...)".
-function parseImageUrls(value: string): string[] {
+export function parseImageUrls(value: string): string[] {
   return value.match(/https?:\/\/[^\s(),]+/g) ?? [];
 }
 
-function parseValue(key: keyof VehicleFormData, value: string): unknown {
+export function parseValue(key: keyof VehicleFormData, value: string): unknown {
   if (!value) return null;
 
   switch (key) {
