@@ -68,6 +68,36 @@ describe("mapAirtableFieldsToVehicle", () => {
     const vehicle = await mapAirtableFieldsToVehicle({ Make: "BMW" }, mapping);
     expect(vehicle.model).toBeUndefined();
   });
+
+  test("skips a failed attachment but preserves successful ones", async () => {
+    const mockFetch = vi.mocked(global.fetch);
+    mockFetch.mockImplementation(async (input: string | URL | Request) => {
+      const urlStr = typeof input === "string" ? input : input.toString();
+      if (urlStr.includes("bad")) {
+        throw new Error("Network error: Failed to fetch");
+      }
+      return {
+        ok: true,
+        headers: new Map([["content-type", "image/jpeg"]]),
+        arrayBuffer: async () => new ArrayBuffer(0),
+      } as unknown as Response;
+    });
+
+    const vehicle = await mapAirtableFieldsToVehicle(
+      {
+        Photos: [
+          { url: "https://v5.airtableusercontent.com/bad.jpg", filename: "bad.jpg" },
+          { url: "https://v5.airtableusercontent.com/good.jpg", filename: "good.jpg" },
+        ],
+      },
+      mapping
+    );
+    expect(vehicle.image_urls).toEqual([
+      "https://supabase.example/vehicle-images/rehosted.jpg",
+    ]);
+    expect(vehicle.image_url).toBe("https://supabase.example/vehicle-images/rehosted.jpg");
+    mockFetch.mockRestore();
+  });
 });
 
 describe("mapVehicleToAirtableFields", () => {

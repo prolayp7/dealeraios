@@ -35,14 +35,19 @@ async function rehostAttachments(attachments: AirtableAttachment[]): Promise<str
   const urls: string[] = [];
 
   for (const attachment of attachments) {
-    const response = await fetch(attachment.url);
-    if (!response.ok) continue;
+    try {
+      const response = await fetch(attachment.url);
+      if (!response.ok) continue;
 
-    const buffer = Buffer.from(await response.arrayBuffer());
-    const contentType =
-      attachment.type || response.headers.get("content-type") || "image/jpeg";
-    const { url } = await uploadVehicleImage(buffer, contentType, extFromFilename(attachment.filename));
-    urls.push(url);
+      const buffer = Buffer.from(await response.arrayBuffer());
+      const contentType =
+        attachment.type || response.headers.get("content-type") || "image/jpeg";
+      const { url } = await uploadVehicleImage(buffer, contentType, extFromFilename(attachment.filename));
+      urls.push(url);
+    } catch (error) {
+      console.warn(`Failed to rehost attachment: ${attachment.url}`, error);
+      continue;
+    }
   }
 
   return urls;
