@@ -47,6 +47,13 @@ export interface Vehicle {
   fb_listing_status: FbListingStatus | null;
   image_url: string | null;
   image_urls: string[] | null;
+  color: string | null;
+  code: string | null;
+  lot_location: string | null;
+  sold_date: string | null;
+  airtable_record_id: string | null;
+  airtable_synced_at: string | null;
+  updated_at: string;
   created_at: string;
 }
 
@@ -91,6 +98,10 @@ export interface VehicleFormData {
   fb_listing_status?: FbListingStatus | null;
   image_url?: string | null;
   image_urls?: string[] | null;
+  color?: string | null;
+  code?: string | null;
+  lot_location?: string | null;
+  sold_date?: string | null;
 }
 
 export interface AiExtractedVehicle {
