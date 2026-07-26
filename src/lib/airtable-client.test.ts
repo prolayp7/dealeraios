@@ -99,3 +99,15 @@ test("throws with the Airtable error body when a call fails", async () => {
 
   await expect(listAirtableRecords(config)).rejects.toThrow("Invalid API key");
 });
+
+test("throws when a successful response has invalid JSON", async () => {
+  const fetchMock = vi.fn().mockResolvedValue({
+    ok: true,
+    json: async () => {
+      throw new Error("Unexpected token");
+    },
+  });
+  vi.stubGlobal("fetch", fetchMock);
+
+  await expect(listAirtableRecords(config)).rejects.toThrow("Unexpected token");
+});

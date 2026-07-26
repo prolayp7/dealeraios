@@ -28,15 +28,15 @@ async function airtableFetch(
     },
   });
 
-  const body = await response.json().catch(() => ({}));
-
   if (!response.ok) {
+    const body = await response.json().catch(() => ({}));
     const message =
       (body as { error?: { message?: string } })?.error?.message ??
       `Airtable request failed with status ${response.status}`;
     throw new Error(message);
   }
 
+  const body = await response.json();
   return body;
 }
 
