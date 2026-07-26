@@ -51,10 +51,10 @@
   },
   {
     "name": "wd",
-    "value": "1450x798",
+    "value": "921x948",
     "domain": ".facebook.com",
     "path": "/",
-    "expires": 1784989132,
+    "expires": 1785675885,
     "httpOnly": false,
     "secure": true,
     "sameSite": "Lax"

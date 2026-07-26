@@ -23,7 +23,7 @@ function parsePrice(text: string): number | null {
 }
 
 function parseMileage(text: string): number | null {
-  const match = text.replace(/,/g, "").match(/(\d[\d,]*)\s*(?:mi|miles|km)?/i);
+  const match = text.match(/(\d[\d,]*)\s*(?:mi\b|miles?\b|km\b)/i);
   if (!match) return null;
   const value = parseInt(match[1].replace(/,/g, ""), 10);
   return Number.isFinite(value) ? value : null;
@@ -105,11 +105,17 @@ async function setMarketplaceLocation(
       await randomDelay();
     }
 
-    const radiusSelect = page.locator("text=/\\d+ miles/").first();
+    const radiusSelect = page
+      .locator('[role="combobox"], button, [aria-haspopup="listbox"]')
+      .filter({ hasText: /\d+\s*miles/i })
+      .first();
     if ((await radiusSelect.count()) > 0) {
       await radiusSelect.click();
       await randomDelay();
-      const radiusOption = page.locator(`text="${radius} miles"`).first();
+      const radiusOption = page
+        .locator('[role="option"]')
+        .filter({ hasText: `${radius} miles` })
+        .first();
       if ((await radiusOption.count()) > 0) {
         await radiusOption.click();
         await randomDelay();
