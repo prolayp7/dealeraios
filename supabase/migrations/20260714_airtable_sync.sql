@@ -20,7 +20,11 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_vehicles_dealership_airtable_record
 CREATE OR REPLACE FUNCTION set_vehicles_updated_at()
 RETURNS TRIGGER AS $$
 BEGIN
-  NEW.updated_at = NOW();
+  IF (to_jsonb(NEW) - 'updated_at' - 'airtable_record_id' - 'airtable_synced_at')
+     IS DISTINCT FROM
+     (to_jsonb(OLD) - 'updated_at' - 'airtable_record_id' - 'airtable_synced_at') THEN
+    NEW.updated_at = NOW();
+  END IF;
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
