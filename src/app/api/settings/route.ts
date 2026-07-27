@@ -68,11 +68,13 @@ export async function PATCH(request: Request) {
       if (!(field in body)) continue;
 
       if (field === "airtable_config") {
-        const { data: existingRow } = await supabase
+        const { data: existingRow, error: existingError } = await supabase
           .from("dealership_settings")
           .select("airtable_config")
           .eq("dealership_id", session.dealershipId)
           .maybeSingle();
+
+        if (existingError) throw existingError;
 
         const existing = (existingRow?.airtable_config as typeof DEFAULT_AIRTABLE_CONFIG | undefined) ?? DEFAULT_AIRTABLE_CONFIG;
         updates.airtable_config = mergeAirtableConfigUpdate(existing, body.airtable_config);
