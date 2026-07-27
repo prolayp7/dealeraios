@@ -34,9 +34,29 @@ export async function POST(request: Request) {
 
   for (const row of enabledRows) {
     const config = row.airtable_config as AirtableConfig;
+
+    // Try to sync
+    let result;
     try {
-      const result = await syncDealershipAirtable(row.dealership_id, config, admin);
+      result = await syncDealershipAirtable(row.dealership_id, config, admin);
       results.push(result);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      results.push({ created: 0, updated: 0, pushedToAirtable: 0, errors: [message] });
+      // Update dealership_settings with error
+      try {
+        await admin
+          .from("dealership_settings")
+          .update({ airtable_config: { ...config, last_sync_error: message } })
+          .eq("dealership_id", row.dealership_id);
+      } catch (updateErr) {
+        console.error(`Failed to update sync error for dealership ${row.dealership_id}:`, updateErr);
+      }
+      continue; // Skip bookkeeping update since sync failed
+    }
+
+    // Bookkeeping update (only if sync succeeded)
+    try {
       await admin
         .from("dealership_settings")
         .update({
@@ -47,13 +67,9 @@ export async function POST(request: Request) {
           },
         })
         .eq("dealership_id", row.dealership_id);
-    } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
-      results.push({ created: 0, updated: 0, pushedToAirtable: 0, errors: [message] });
-      await admin
-        .from("dealership_settings")
-        .update({ airtable_config: { ...config, last_sync_error: message } })
-        .eq("dealership_id", row.dealership_id);
+    } catch (updateErr) {
+      console.error(`Failed to update sync bookkeeping for dealership ${row.dealership_id}:`, updateErr);
+      // Silently continue - result already in results array
     }
   }
 

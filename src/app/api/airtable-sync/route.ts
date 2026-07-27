@@ -29,7 +29,22 @@ export async function POST() {
       return NextResponse.json({ error: "Airtable sync is not enabled for this dealership" }, { status: 400 });
     }
 
-    const result = await syncDealershipAirtable(session.dealershipId, config, supabase);
+    let result;
+    try {
+      result = await syncDealershipAirtable(session.dealershipId, config, supabase);
+    } catch (syncError) {
+      const message = syncError instanceof Error ? syncError.message : String(syncError);
+      // Persist the error to dealership_settings even though sync failed
+      try {
+        await supabase
+          .from("dealership_settings")
+          .update({ airtable_config: { ...config, last_sync_error: message } })
+          .eq("dealership_id", session.dealershipId);
+      } catch (updateErr) {
+        console.error("Failed to persist sync error to dealership_settings:", updateErr);
+      }
+      throw syncError; // Re-throw to be caught by outer catch
+    }
 
     await supabase
       .from("dealership_settings")
