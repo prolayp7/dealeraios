@@ -59,9 +59,26 @@ export async function isBlockedPage(page: Page): Promise<boolean> {
 
 export async function isLoggedIn(page: Page): Promise<boolean> {
   const url = page.url();
-  return (
-    !url.includes("/login") && !url.includes("two_step_verification")
-  );
+  if (url.includes("/login") || url.includes("two_step_verification")) {
+    return false;
+  }
+
+  // Facebook can render marketplace as a logged-out guest view (with a "Log in
+  // to see more" modal) without redirecting away from the current URL, so a
+  // URL check alone produces false positives. Require the actual session
+  // cookies, and check for the guest-modal copy as a second signal.
+  const cookies = await page.context().cookies();
+  const hasAuthCookies =
+    cookies.some((c) => c.name === "c_user") &&
+    cookies.some((c) => c.name === "xs");
+  if (!hasAuthCookies) return false;
+
+  const bodyText = await page.locator("body").innerText().catch(() => "");
+  if (/log in to see more|create new account|forgotten( your| an)? account/i.test(bodyText)) {
+    return false;
+  }
+
+  return true;
 }
 
 function parseCookiesFromEnv(rawCookies: string): Cookie[] {
@@ -164,12 +181,10 @@ export async function loginToFacebook(page: Page): Promise<void> {
     );
   }
 
-  if (page.url().includes("login")) {
-    throw new ScraperError(
-      "Cookie injection failed. FB_COOKIES may be expired or invalid.",
-      "LOGIN"
-    );
-  }
+  throw new ScraperError(
+    "Cookie injection failed. FB_COOKIES may be expired or invalid — Facebook served a logged-out/guest view.",
+    "LOGIN"
+  );
 }
 
 export async function ensureLoggedIn(page: Page): Promise<void> {
