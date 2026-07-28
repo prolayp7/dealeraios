@@ -35,7 +35,18 @@ export interface SyncResult {
   created: number;
   updated: number;
   pushedToAirtable: number;
+  /** Pre-existing local vehicles matched to an Airtable record by VIN instead of duplicated. */
+  linked: number;
   errors: string[];
+}
+
+// Airtable VINs arrive as free text and local ones came from a CSV import, so
+// compare them case- and whitespace-insensitively. Anything that isn't a
+// non-empty string/number can't be matched and is treated as "no VIN".
+function normalizeVin(value: unknown): string | null {
+  if (typeof value !== "string" && typeof value !== "number") return null;
+  const vin = String(value).trim().toUpperCase();
+  return vin.length > 0 ? vin : null;
 }
 
 function toClientConfig(config: AirtableConfig): AirtableClientConfig {
@@ -140,7 +151,7 @@ export async function syncDealershipAirtable(
   config: AirtableConfig,
   supabase: SupabaseClient
 ): Promise<SyncResult> {
-  const result: SyncResult = { created: 0, updated: 0, pushedToAirtable: 0, errors: [] };
+  const result: SyncResult = { created: 0, updated: 0, pushedToAirtable: 0, linked: 0, errors: [] };
   const clientConfig = toClientConfig(config);
 
   const airtableRecords = await listAllAirtableRecords(clientConfig);
@@ -181,8 +192,71 @@ export async function syncDealershipAirtable(
     }
   }
 
+  // Fetched once, up front: unlinked local vehicles feed both the VIN linking
+  // pass below and (whatever is left over) the final push loop.
+  const { data: unlinkedData, error: unlinkedError } = await supabase
+    .from("vehicles")
+    .select("*")
+    .eq("dealership_id", dealershipId)
+    .is("airtable_record_id", null);
+
+  if (unlinkedError) throw unlinkedError;
+
+  const unlinkedVehicles = (unlinkedData ?? []) as Vehicle[];
+
+  // VIN linking pass. Dealerships that used the Day-1 CSV/Airtable-export
+  // importer already have local copies of their Airtable rows with a null
+  // airtable_record_id. Without this pass the two loops below would treat them
+  // as unknown on both sides and duplicate every car in *both* systems, with no
+  // deletion propagation to undo it. Match on VIN first and just link the pair.
+  const unlinkedByVin = new Map<string, Vehicle>();
+  for (const vehicle of unlinkedVehicles) {
+    const vin = normalizeVin(vehicle.vin);
+    // First writer wins on duplicate local VINs; the rest fall through to push.
+    if (vin && !unlinkedByVin.has(vin)) unlinkedByVin.set(vin, vehicle);
+  }
+
+  const vinFieldName = config.column_mapping.vin;
+  const newlyLinkedVehicleIds = new Set<string>();
+  const unmatchedRecords: AirtableRecord[] = [];
+
   for (const record of airtableRecords) {
     if (linkedRecordIds.has(record.id)) continue;
+
+    if (!vinFieldName || unlinkedByVin.size === 0) {
+      unmatchedRecords.push(record);
+      continue;
+    }
+
+    try {
+      const vin = normalizeVin(record.fields[vinFieldName]);
+      const match = vin ? unlinkedByVin.get(vin) : undefined;
+      if (!vin || !match) {
+        unmatchedRecords.push(record);
+        continue;
+      }
+
+      // Linking only sets airtable_record_id, which the updated_at trigger
+      // ignores, and leaves airtable_synced_at null so the next run's linked
+      // pass reconciles the two copies by whole-record last-write-wins.
+      const { error } = await supabase
+        .from("vehicles")
+        .update({ airtable_record_id: record.id })
+        .eq("id", match.id);
+
+      if (error) throw error;
+
+      unlinkedByVin.delete(vin);
+      newlyLinkedVehicleIds.add(match.id);
+      result.linked++;
+    } catch (err) {
+      // Deliberately NOT falling through to create: a failed link would
+      // otherwise duplicate the vehicle. Skip it and retry next sync.
+      result.errors.push(`Airtable record ${record.id}: ${err instanceof Error ? err.message : String(err)}`);
+    }
+  }
+
+  for (const record of unmatchedRecords) {
     try {
       const created = await createVehicleFromAirtableRecord(supabase, dealershipId, record, config);
       if (created) result.created++;
@@ -191,15 +265,8 @@ export async function syncDealershipAirtable(
     }
   }
 
-  const { data: unlinkedVehicles, error: unlinkedError } = await supabase
-    .from("vehicles")
-    .select("*")
-    .eq("dealership_id", dealershipId)
-    .is("airtable_record_id", null);
-
-  if (unlinkedError) throw unlinkedError;
-
-  for (const vehicle of (unlinkedVehicles ?? []) as Vehicle[]) {
+  for (const vehicle of unlinkedVehicles) {
+    if (newlyLinkedVehicleIds.has(vehicle.id)) continue;
     try {
       const fields = mapVehicleToAirtableFields(vehicle, config.column_mapping);
       const record = await createAirtableRecord(clientConfig, fields);

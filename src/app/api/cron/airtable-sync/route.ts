@@ -42,7 +42,7 @@ export async function POST(request: Request) {
       results.push(result);
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
-      results.push({ created: 0, updated: 0, pushedToAirtable: 0, errors: [message] });
+      results.push({ created: 0, updated: 0, pushedToAirtable: 0, linked: 0, errors: [message] });
       // Update dealership_settings with error
       try {
         await admin

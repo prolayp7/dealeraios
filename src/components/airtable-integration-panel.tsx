@@ -91,6 +91,7 @@ export function AirtableIntegrationPanel({
       if (!res.ok) throw new Error(data.error || "Sync failed");
       setMessage(
         `Synced: ${data.created} created, ${data.updated} updated, ${data.pushedToAirtable} pushed to Airtable.` +
+          (data.linked ? ` ${data.linked} existing vehicle(s) matched to Airtable by VIN.` : "") +
           (data.errors.length ? ` ${data.errors.length} error(s) — see server logs.` : "")
       );
       onConfigSaved();
