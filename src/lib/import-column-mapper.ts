@@ -136,6 +136,16 @@ export function parseValue(key: keyof VehicleFormData, value: string): unknown {
   }
 }
 
+// A mapped row is only worth persisting if it identifies a vehicle at all.
+// Rows missing both make and model are spacers, notes rows, or stray headers.
+// Shared by the CSV importer, the Airtable import route, and the sync engine so
+// all three agree on what counts as a real vehicle.
+export function isImportableVehicle(
+  vehicle: Pick<VehicleFormData, "make" | "model">
+): boolean {
+  return Boolean(vehicle.make || vehicle.model);
+}
+
 // Applies a dealer-confirmed mapping to raw CSV rows, producing importable
 // vehicle rows. Rows missing both make and model are dropped as unusable.
 export function applyColumnMapping(
@@ -169,7 +179,7 @@ export function applyColumnMapping(
       );
     }
 
-    if (vehicle.make || vehicle.model) {
+    if (isImportableVehicle(vehicle)) {
       vehicles.push(vehicle);
     }
   }

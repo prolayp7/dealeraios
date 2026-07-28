@@ -6,7 +6,7 @@ import { mapAirtableFieldsToVehicle } from "@/lib/airtable-field-mapping";
 import { enrichVehicle } from "@/lib/vehicle-logic";
 import { maskAirtableConfig } from "@/lib/airtable-config";
 import type { AirtableConfig } from "@/lib/types";
-import type { ColumnMapping } from "@/lib/import-column-mapper";
+import { isImportableVehicle, type ColumnMapping } from "@/lib/import-column-mapper";
 
 interface ImportRequestBody {
   personalAccessToken: string;
@@ -44,20 +44,32 @@ export async function POST(request: Request) {
     const records = await listAllAirtableRecords(clientConfig);
 
     let imported = 0;
+    const errors: string[] = [];
+
+    // Per-record error isolation: one bad row must not abort the import, because
+    // the settings upsert below (which enables sync) has to run either way —
+    // otherwise a partial import leaves the dealer with linked vehicles, no saved
+    // config, and a retry that dies on the first duplicate airtable_record_id.
     for (const record of records) {
-      const mapped = await mapAirtableFieldsToVehicle(record.fields, body.columnMapping);
-      if (!mapped.make && !mapped.model) continue;
+      try {
+        const mapped = await mapAirtableFieldsToVehicle(record.fields, body.columnMapping);
+        if (!isImportableVehicle(mapped)) continue;
 
-      const enriched = enrichVehicle({ ...mapped, id: crypto.randomUUID() });
-      const { error } = await supabase.from("vehicles").insert({
-        ...enriched,
-        dealership_id: session.dealershipId,
-        airtable_record_id: record.id,
-        airtable_synced_at: new Date().toISOString(),
-      });
+        const enriched = enrichVehicle({ ...mapped, id: crypto.randomUUID() });
+        const { error } = await supabase.from("vehicles").insert({
+          ...enriched,
+          dealership_id: session.dealershipId,
+          airtable_record_id: record.id,
+          airtable_synced_at: new Date().toISOString(),
+        });
 
-      if (error) throw error;
-      imported++;
+        if (error) throw error;
+        imported++;
+      } catch (err) {
+        errors.push(
+          `Airtable record ${record.id}: ${err instanceof Error ? err.message : String(err)}`
+        );
+      }
     }
 
     const config: AirtableConfig = {
@@ -77,7 +89,11 @@ export async function POST(request: Request) {
 
     if (settingsError) throw settingsError;
 
-    return NextResponse.json({ imported, config: maskAirtableConfig(config) });
+    if (errors.length > 0) {
+      console.error("POST /api/airtable/import: partial import failures", errors);
+    }
+
+    return NextResponse.json({ imported, errors, config: maskAirtableConfig(config) });
   } catch (error) {
     console.error("POST /api/airtable/import:", error);
     return NextResponse.json(

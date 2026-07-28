@@ -67,7 +67,12 @@ export function AirtableIntegrationPanel({
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Import failed");
-      setMessage(`Imported ${data.imported} vehicles. Sync enabled.`);
+      setMessage(
+        `Imported ${data.imported} vehicles.` +
+          (data.errors?.length
+            ? ` ${data.errors.length} record(s) failed — see server logs.`
+            : " Sync enabled.")
+      );
       onConfigSaved();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Import failed");

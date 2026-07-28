@@ -52,7 +52,11 @@ async function pullIntoVehicle(
   config: AirtableConfig
 ): Promise<void> {
   const mapped = await mapAirtableFieldsToVehicle(record.fields, config.column_mapping);
-  const enriched = enrichVehicle({ ...mapped, id: vehicle.id });
+  // Merge onto the full existing row so unmapped, app-only columns (market data,
+  // FB listing state, photos, ...) survive a pull. Airtable's mapped fields win
+  // where present; a field cleared in Airtable is absent from `mapped` and keeps
+  // its local value (documented trade-off — no field-level clear propagation).
+  const enriched = enrichVehicle({ ...vehicle, ...mapped, id: vehicle.id });
 
   const { error } = await supabase
     .from("vehicles")
