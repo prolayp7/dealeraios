@@ -56,14 +56,28 @@ export async function POST(request: Request) {
         if (!isImportableVehicle(mapped)) continue;
 
         const enriched = enrichVehicle({ ...mapped, id: crypto.randomUUID() });
-        const { error } = await supabase.from("vehicles").insert({
-          ...enriched,
-          dealership_id: session.dealershipId,
-          airtable_record_id: record.id,
-          airtable_synced_at: new Date().toISOString(),
-        });
+        // airtable_synced_at is set from the server-assigned updated_at in a
+        // follow-up update, not from a client clock read taken before the round
+        // trip — otherwise updated_at > airtable_synced_at and the first sync
+        // after import pushes every freshly imported vehicle back to Airtable.
+        const { data: inserted, error } = await supabase
+          .from("vehicles")
+          .insert({
+            ...enriched,
+            dealership_id: session.dealershipId,
+            airtable_record_id: record.id,
+          })
+          .select("id, updated_at")
+          .single();
 
         if (error) throw error;
+
+        const { error: syncedError } = await supabase
+          .from("vehicles")
+          .update({ airtable_synced_at: inserted.updated_at })
+          .eq("id", inserted.id);
+
+        if (syncedError) throw syncedError;
         imported++;
       } catch (err) {
         errors.push(

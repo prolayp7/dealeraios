@@ -58,12 +58,27 @@ async function pullIntoVehicle(
   // its local value (documented trade-off — no field-level clear propagation).
   const enriched = enrichVehicle({ ...vehicle, ...mapped, id: vehicle.id });
 
-  const { error } = await supabase
+  // Two-step so airtable_synced_at is the *server* updated_at, not an earlier
+  // client clock reading: the trigger bumps updated_at to NOW() on this data
+  // write, which would otherwise land after our JS timestamp and make the next
+  // decideSyncDirection see a spurious local change (=> pointless push).
+  // The follow-up update touches only airtable_synced_at, which the trigger
+  // excludes from its change comparison, so updated_at is not bumped again.
+  const { data, error } = await supabase
     .from("vehicles")
-    .update({ ...enriched, airtable_synced_at: new Date().toISOString() })
-    .eq("id", vehicle.id);
+    .update(enriched)
+    .eq("id", vehicle.id)
+    .select("updated_at")
+    .single();
 
   if (error) throw error;
+
+  const { error: syncedError } = await supabase
+    .from("vehicles")
+    .update({ airtable_synced_at: data.updated_at })
+    .eq("id", vehicle.id);
+
+  if (syncedError) throw syncedError;
 }
 
 async function pushFromVehicle(
@@ -92,14 +107,26 @@ async function createVehicleFromAirtableRecord(
   const mapped = await mapAirtableFieldsToVehicle(record.fields, config.column_mapping);
   const enriched = enrichVehicle({ ...mapped, id: crypto.randomUUID() });
 
-  const { error } = await supabase.from("vehicles").insert({
-    ...enriched,
-    dealership_id: dealershipId,
-    airtable_record_id: record.id,
-    airtable_synced_at: new Date().toISOString(),
-  });
+  // Same two-step as pullIntoVehicle: updated_at gets its column DEFAULT NOW()
+  // server-side, strictly after any client timestamp we could compute here.
+  const { data, error } = await supabase
+    .from("vehicles")
+    .insert({
+      ...enriched,
+      dealership_id: dealershipId,
+      airtable_record_id: record.id,
+    })
+    .select("id, updated_at")
+    .single();
 
   if (error) throw error;
+
+  const { error: syncedError } = await supabase
+    .from("vehicles")
+    .update({ airtable_synced_at: data.updated_at })
+    .eq("id", data.id);
+
+  if (syncedError) throw syncedError;
 }
 
 export async function syncDealershipAirtable(
