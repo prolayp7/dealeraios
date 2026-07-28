@@ -1,5 +1,10 @@
 import { describe, expect, test } from "vitest";
-import { suggestColumnMapping, parseValue, parseImageUrls } from "./import-column-mapper";
+import {
+  suggestColumnMapping,
+  parseValue,
+  parseImageUrls,
+  isImportableVehicle,
+} from "./import-column-mapper";
 
 describe("suggestColumnMapping — new fields", () => {
   test("maps Color, CODE, Where, Sold Date", () => {
@@ -21,5 +26,14 @@ describe("parseImageUrls is exported", () => {
   test("extracts URLs from an Airtable CSV attachment cell", () => {
     const cell = "file.jpg (https://v5.airtableusercontent.com/a/b.jpg)";
     expect(parseImageUrls(cell)).toEqual(["https://v5.airtableusercontent.com/a/b.jpg"]);
+  });
+});
+
+describe("isImportableVehicle", () => {
+  test("accepts a row with either make or model, rejects blank spacer rows", () => {
+    expect(isImportableVehicle({ make: "Honda", model: null })).toBe(true);
+    expect(isImportableVehicle({ make: null, model: "Civic" })).toBe(true);
+    expect(isImportableVehicle({ make: null, model: "" })).toBe(false);
+    expect(isImportableVehicle({})).toBe(false);
   });
 });

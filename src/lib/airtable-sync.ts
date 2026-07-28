@@ -8,6 +8,7 @@ import {
 } from "@/lib/airtable-client";
 import { mapAirtableFieldsToVehicle, mapVehicleToAirtableFields } from "@/lib/airtable-field-mapping";
 import { enrichVehicle } from "@/lib/vehicle-logic";
+import { isImportableVehicle } from "@/lib/import-column-mapper";
 import type { AirtableConfig, Vehicle } from "@/lib/types";
 
 export type SyncDirection = "pull" | "push" | "none";
@@ -103,8 +104,12 @@ async function createVehicleFromAirtableRecord(
   dealershipId: string,
   record: AirtableRecord,
   config: AirtableConfig
-): Promise<void> {
+): Promise<boolean> {
   const mapped = await mapAirtableFieldsToVehicle(record.fields, config.column_mapping);
+  // Same guard the import route applies: spacer/notes/header rows carry no make
+  // or model, and creating them yields blank "LIST NOW" phantom inventory.
+  if (!isImportableVehicle(mapped)) return false;
+
   const enriched = enrichVehicle({ ...mapped, id: crypto.randomUUID() });
 
   // Same two-step as pullIntoVehicle: updated_at gets its column DEFAULT NOW()
@@ -127,6 +132,7 @@ async function createVehicleFromAirtableRecord(
     .eq("id", data.id);
 
   if (syncedError) throw syncedError;
+  return true;
 }
 
 export async function syncDealershipAirtable(
@@ -178,8 +184,8 @@ export async function syncDealershipAirtable(
   for (const record of airtableRecords) {
     if (linkedRecordIds.has(record.id)) continue;
     try {
-      await createVehicleFromAirtableRecord(supabase, dealershipId, record, config);
-      result.created++;
+      const created = await createVehicleFromAirtableRecord(supabase, dealershipId, record, config);
+      if (created) result.created++;
     } catch (err) {
       result.errors.push(`Airtable record ${record.id}: ${err instanceof Error ? err.message : String(err)}`);
     }
