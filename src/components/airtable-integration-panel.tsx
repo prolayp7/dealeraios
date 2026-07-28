@@ -27,6 +27,12 @@ export function AirtableIntegrationPanel({
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
 
+  // An unmatched Last Modified field name silently disables all Airtable-side
+  // change detection (record.fields[name] is forever undefined), so catch the
+  // typo here — once Preview has told us what columns the base actually has.
+  const lastModifiedFieldMissing =
+    fieldNames.length > 0 && !fieldNames.includes(lastModifiedField.trim());
+
   const handlePreview = async () => {
     setPreviewing(true);
     setError(null);
@@ -147,6 +153,15 @@ export function AirtableIntegrationPanel({
             value={lastModifiedField}
             onChange={(e) => setLastModifiedField(e.target.value)}
           />
+          <p className="text-xs text-slate-500">
+            Your Airtable base needs a &quot;Last Modified Time&quot; field (any name) so this app can
+            detect changes made in Airtable.
+          </p>
+          {lastModifiedFieldMissing && (
+            <p className="text-sm text-red-400">
+              This field name wasn&apos;t found in your Airtable base&apos;s columns.
+            </p>
+          )}
         </div>
       </div>
 
@@ -157,7 +172,7 @@ export function AirtableIntegrationPanel({
       {fieldNames.length > 0 && (
         <>
           <ColumnMappingEditor availableColumns={fieldNames} mapping={mapping} onChange={setMapping} />
-          <Button onClick={handleImport} disabled={importing}>
+          <Button onClick={handleImport} disabled={importing || lastModifiedFieldMissing}>
             {importing ? "Importing..." : "Import & Enable Sync"}
           </Button>
         </>
