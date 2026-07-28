@@ -24,6 +24,8 @@ export function AirtableIntegrationPanel({
   const [previewing, setPreviewing] = useState(false);
   const [importing, setImporting] = useState(false);
   const [syncing, setSyncing] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
 
@@ -108,6 +110,50 @@ export function AirtableIntegrationPanel({
     }
   };
 
+  // The stored PAT is never sent to the client, so an empty field means "keep
+  // the current token" — mergeAirtableConfigUpdate preserves it when omitted.
+  const patchAirtableConfig = async (
+    update: Record<string, unknown>,
+    successMessage: string
+  ) => {
+    setSaving(true);
+    setError(null);
+    setMessage(null);
+    try {
+      const res = await fetch("/api/settings", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ airtable_config: update }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to save settings");
+      setMessage(successMessage);
+      setEditing(false);
+      onConfigSaved();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to save settings");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleSaveSettings = async () => {
+    await patchAirtableConfig(
+      {
+        base_id: baseId,
+        table_name: tableName,
+        last_modified_field: lastModifiedField,
+        ...(pat.trim() ? { personal_access_token: pat.trim() } : {}),
+      },
+      "Connection settings saved."
+    );
+    setPat("");
+  };
+
+  const handleDisableSync = async () => {
+    await patchAirtableConfig({ enabled: false }, "Airtable sync disabled.");
+  };
+
   if (config.enabled) {
     return (
       <div className="space-y-4">
@@ -122,9 +168,69 @@ export function AirtableIntegrationPanel({
         {config.last_sync_error && (
           <p className="text-sm text-red-400">Last sync error: {config.last_sync_error}</p>
         )}
-        <Button onClick={handleSyncNow} disabled={syncing}>
-          {syncing ? "Syncing..." : "Sync Now"}
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          <Button onClick={handleSyncNow} disabled={syncing}>
+            {syncing ? "Syncing..." : "Sync Now"}
+          </Button>
+          <Button variant="outline" onClick={() => setEditing((prev) => !prev)}>
+            {editing ? "Cancel" : "Edit connection settings"}
+          </Button>
+        </div>
+
+        {editing && (
+          <div className="space-y-4 rounded-md border border-slate-700 p-4">
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="airtable-edit-pat">Personal Access Token</Label>
+                <Input
+                  id="airtable-edit-pat"
+                  type="password"
+                  value={pat}
+                  placeholder="Leave blank to keep the current token"
+                  onChange={(e) => setPat(e.target.value)}
+                />
+                <p className="text-xs text-slate-500">
+                  Leave blank to keep the current token. Enter a new one only if it was rotated or
+                  revoked.
+                </p>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="airtable-edit-base">Base ID</Label>
+                <Input
+                  id="airtable-edit-base"
+                  value={baseId}
+                  onChange={(e) => setBaseId(e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="airtable-edit-table">Table Name</Label>
+                <Input
+                  id="airtable-edit-table"
+                  value={tableName}
+                  onChange={(e) => setTableName(e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="airtable-edit-last-modified">Last Modified field name</Label>
+                <Input
+                  id="airtable-edit-last-modified"
+                  value={lastModifiedField}
+                  onChange={(e) => setLastModifiedField(e.target.value)}
+                />
+              </div>
+            </div>
+
+            <div className="flex flex-wrap gap-2">
+              <Button onClick={handleSaveSettings} disabled={saving}>
+                {saving ? "Saving..." : "Save Changes"}
+              </Button>
+              <Button variant="destructive" onClick={handleDisableSync} disabled={saving}>
+                Disable Sync
+              </Button>
+            </div>
+          </div>
+        )}
+
         {message && <p className="text-sm text-emerald-400">{message}</p>}
         {error && <p className="text-sm text-red-400">{error}</p>}
       </div>
