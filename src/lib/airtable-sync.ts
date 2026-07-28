@@ -85,9 +85,25 @@ async function pullIntoVehicle(
 
   if (error) throw error;
 
+  // A pull is frequently a genuine no-op: because the merge above starts from
+  // the full existing row, an Airtable edit that only touched a column outside
+  // column_mapping produces an `enriched` identical to what's already stored.
+  // The trigger's IS DISTINCT FROM check is then false, updated_at is NOT
+  // bumped, and the value just read back is the stale pre-write timestamp —
+  // which predates the Airtable edit that triggered this pull. Writing that
+  // into airtable_synced_at would leave the record looking perpetually
+  // Airtable-modified and re-pull it every cron cycle forever.
+  //
+  // "Did the trigger fire" is exactly "is the returned updated_at newer than
+  // the one we read before the write", so compare against vehicle.updated_at.
+  // On a no-op nothing was written, so there is no server timestamp to be
+  // skewed against and the client clock is safe (and always converges).
+  const triggerFired = new Date(data.updated_at) > new Date(vehicle.updated_at);
+  const syncedAt = triggerFired ? data.updated_at : new Date().toISOString();
+
   const { error: syncedError } = await supabase
     .from("vehicles")
-    .update({ airtable_synced_at: data.updated_at })
+    .update({ airtable_synced_at: syncedAt })
     .eq("id", vehicle.id);
 
   if (syncedError) throw syncedError;
