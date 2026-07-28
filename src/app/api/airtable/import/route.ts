@@ -52,7 +52,7 @@ export async function POST(request: Request) {
     // config, and a retry that dies on the first duplicate airtable_record_id.
     for (const record of records) {
       try {
-        const mapped = await mapAirtableFieldsToVehicle(record.fields, body.columnMapping);
+        const mapped = await mapAirtableFieldsToVehicle(record.fields, body.columnMapping, supabase);
         if (!isImportableVehicle(mapped)) continue;
 
         const enriched = enrichVehicle({ ...mapped, id: crypto.randomUUID() });

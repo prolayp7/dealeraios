@@ -52,7 +52,7 @@ async function pullIntoVehicle(
   record: AirtableRecord,
   config: AirtableConfig
 ): Promise<void> {
-  const mapped = await mapAirtableFieldsToVehicle(record.fields, config.column_mapping);
+  const mapped = await mapAirtableFieldsToVehicle(record.fields, config.column_mapping, supabase);
   // Merge onto the full existing row so unmapped, app-only columns (market data,
   // FB listing state, photos, ...) survive a pull. Airtable's mapped fields win
   // where present; a field cleared in Airtable is absent from `mapped` and keeps
@@ -105,7 +105,7 @@ async function createVehicleFromAirtableRecord(
   record: AirtableRecord,
   config: AirtableConfig
 ): Promise<boolean> {
-  const mapped = await mapAirtableFieldsToVehicle(record.fields, config.column_mapping);
+  const mapped = await mapAirtableFieldsToVehicle(record.fields, config.column_mapping, supabase);
   // Same guard the import route applies: spacer/notes/header rows carry no make
   // or model, and creating them yields blank "LIST NOW" phantom inventory.
   if (!isImportableVehicle(mapped)) return false;

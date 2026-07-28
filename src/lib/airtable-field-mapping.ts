@@ -1,3 +1,4 @@
+import type { SupabaseClient } from "@supabase/supabase-js";
 import type { VehicleFormData } from "@/lib/types";
 import {
   TARGET_FIELDS,
@@ -31,7 +32,10 @@ function extFromFilename(filename: string): string {
   return ext && /^[a-z0-9]+$/.test(ext) ? ext : "jpg";
 }
 
-async function rehostAttachments(attachments: AirtableAttachment[]): Promise<string[]> {
+async function rehostAttachments(
+  attachments: AirtableAttachment[],
+  client?: SupabaseClient
+): Promise<string[]> {
   const urls: string[] = [];
 
   for (const attachment of attachments) {
@@ -42,7 +46,12 @@ async function rehostAttachments(attachments: AirtableAttachment[]): Promise<str
       const buffer = Buffer.from(await response.arrayBuffer());
       const contentType =
         attachment.type || response.headers.get("content-type") || "image/jpeg";
-      const { url } = await uploadVehicleImage(buffer, contentType, extFromFilename(attachment.filename));
+      const { url } = await uploadVehicleImage(
+        buffer,
+        contentType,
+        extFromFilename(attachment.filename),
+        client
+      );
       urls.push(url);
     } catch (error) {
       console.warn(`Failed to rehost attachment: ${attachment.url}`, error);
@@ -61,7 +70,10 @@ function parseAirtableFieldValue(key: keyof VehicleFormData, raw: unknown): unkn
 
 export async function mapAirtableFieldsToVehicle(
   fields: Record<string, unknown>,
-  mapping: ColumnMapping
+  mapping: ColumnMapping,
+  // Passed through to photo re-hosting so uploads use the caller's already
+  // authenticated client (session client on import, admin client on cron).
+  client?: SupabaseClient
 ): Promise<VehicleFormData> {
   const vehicle: Record<string, unknown> = {};
 
@@ -74,7 +86,7 @@ export async function mapAirtableFieldsToVehicle(
 
     if (field.key === "image_url") {
       const urls = isAttachmentArray(raw)
-        ? await rehostAttachments(raw)
+        ? await rehostAttachments(raw, client)
         : typeof raw === "string"
           ? parseImageUrls(raw)
           : [];
