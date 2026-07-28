@@ -2,7 +2,7 @@
 
 import { useCallback, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { ChevronRight, ExternalLink, Loader2, MessageCircle, RotateCcw, Save, Search } from "lucide-react";
+import { ChevronRight, ExternalLink, KeyRound, Loader2, MessageCircle, RotateCcw, Save, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -47,6 +47,7 @@ export default function MarketSearchContent() {
   const [hasSearched, setHasSearched] = useState(false);
   const [loading, setLoading] = useState(false);
   const [resetting, setResetting] = useState(false);
+  const [exportingSession, setExportingSession] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [resetMessage, setResetMessage] = useState<string | null>(null);
   const [savingId, setSavingId] = useState<string | null>(null);
@@ -174,6 +175,31 @@ export default function MarketSearchContent() {
       setError("Network error while resetting browser session.");
     } finally {
       setResetting(false);
+    }
+  }, []);
+
+  const handleExportSession = useCallback(async () => {
+    setExportingSession(true);
+    setError(null);
+    setResetMessage(null);
+
+    try {
+      const res = await fetch("/api/fb-scraper/export-session", {
+        method: "POST",
+      });
+      const data = await res.json();
+
+      if (!res.ok) {
+        setError(data.error || "Failed to export Facebook session");
+        return;
+      }
+
+      setResetMessage(data.message || "Facebook session exported.");
+    } catch (err) {
+      console.error(err);
+      setError("Network error while exporting Facebook session.");
+    } finally {
+      setExportingSession(false);
     }
   }, []);
 
@@ -411,6 +437,25 @@ export default function MarketSearchContent() {
                 <>
                   <RotateCcw className="h-4 w-4" />
                   Reset Browser Session
+                </>
+              )}
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handleExportSession}
+              disabled={loading || resetting || exportingSession}
+              className="min-w-[220px]"
+            >
+              {exportingSession ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Exporting Session...
+                </>
+              ) : (
+                <>
+                  <KeyRound className="h-4 w-4" />
+                  Export FB Session
                 </>
               )}
             </Button>
