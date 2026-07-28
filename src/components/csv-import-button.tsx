@@ -14,10 +14,10 @@ import {
   applyColumnMapping,
   parseCsvText,
   suggestColumnMapping,
-  TARGET_FIELDS,
   type ColumnMapping,
   type ParsedCsv,
 } from "@/lib/import-column-mapper";
+import { ColumnMappingEditor } from "@/components/column-mapping-editor";
 
 interface CsvImportButtonProps {
   onImported: () => void;
@@ -105,36 +105,11 @@ export function CsvImportButton({ onImported }: CsvImportButtonProps) {
             </DialogDescription>
           </DialogHeader>
 
-          <div className="max-h-96 space-y-2 overflow-y-auto">
-            {TARGET_FIELDS.map((field) => (
-              <div
-                key={field.key}
-                className="grid grid-cols-2 items-center gap-3 rounded-md border border-slate-800 p-2"
-              >
-                <span className="text-sm text-slate-200">
-                  {field.label}
-                  {field.required && <span className="text-red-400"> *</span>}
-                </span>
-                <select
-                  value={mapping[field.key] ?? ""}
-                  onChange={(e) =>
-                    setMapping((prev) => ({
-                      ...prev,
-                      [field.key]: e.target.value || undefined,
-                    }))
-                  }
-                  className="h-9 rounded-md border border-slate-700 bg-slate-950 px-2 text-sm text-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500"
-                >
-                  <option value="">— Not mapped —</option>
-                  {parsed?.headers.map((header) => (
-                    <option key={header} value={header}>
-                      {header}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            ))}
-          </div>
+          <ColumnMappingEditor
+            availableColumns={parsed?.headers ?? []}
+            mapping={mapping}
+            onChange={setMapping}
+          />
 
           {error && <p className="text-sm text-red-400">{error}</p>}
 
