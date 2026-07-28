@@ -30,6 +30,9 @@ export function AirtableIntegrationPanel({
   const handlePreview = async () => {
     setPreviewing(true);
     setError(null);
+    setMessage(null);
+    setFieldNames([]);
+    setMapping({});
     try {
       const res = await fetch("/api/airtable/preview", {
         method: "POST",
