@@ -42,6 +42,7 @@ docs/*
 deploy.sh
 creds.txt
 .superpowers/
+.claude/
 
 
 # Others
