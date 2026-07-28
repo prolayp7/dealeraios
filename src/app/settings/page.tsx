@@ -8,6 +8,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { LISTING_TEMPLATES } from "@/lib/listing-templates";
+import { DEFAULT_AIRTABLE_CONFIG } from "@/lib/airtable-config";
+import { AirtableIntegrationPanel } from "@/components/airtable-integration-panel";
 import type { DealershipSettings, MarketplaceAccount } from "@/lib/types";
 
 interface Profile {
@@ -39,7 +41,6 @@ type Tab = (typeof TABS)[number];
 const STUB_TABS = new Set<Tab>([
   "Automation",
   "Notifications",
-  "Integrations",
   "API Keys",
   "Billing",
   "Security",
@@ -329,6 +330,20 @@ export default function SettingsPage() {
                 </Button>
               </div>
             </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {activeTab === "Integrations" && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Integrations</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <AirtableIntegrationPanel
+              config={settings?.airtable_config ?? DEFAULT_AIRTABLE_CONFIG}
+              onConfigSaved={loadSettings}
+            />
           </CardContent>
         </Card>
       )}
