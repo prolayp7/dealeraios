@@ -86,23 +86,39 @@ async function setMarketplaceLocation(
     )
     .first();
 
-  if ((await locationInput.count()) === 0) return;
+  if ((await locationInput.count()) === 0) {
+    console.warn(
+      `Marketplace location input not found on page (wanted "${location}") — location filter was not applied`
+    );
+    return;
+  }
 
   try {
     await locationInput.click();
     await randomDelay();
     await locationInput.fill(location);
-    await randomDelay(1000, 2000);
 
     const suggestion = page
       .locator('[role="option"], [role="listbox"] [role="option"]')
       .first();
-    if ((await suggestion.count()) > 0) {
+    const suggestionAppeared = await suggestion
+      .waitFor({ state: "visible", timeout: 4000 })
+      .then(() => true)
+      .catch(() => false);
+
+    if (suggestionAppeared) {
+      const suggestionText = await suggestion.innerText().catch(() => "");
       await suggestion.click();
       await randomDelay();
+      console.log(
+        `Marketplace location set via suggestion: "${suggestionText}" (requested "${location}")`
+      );
     } else {
       await page.keyboard.press("Enter");
       await randomDelay();
+      console.warn(
+        `No location suggestion dropdown appeared for "${location}" — pressed Enter as fallback, filter may not have applied correctly`
+      );
     }
 
     const radiusSelect = page
@@ -119,8 +135,17 @@ async function setMarketplaceLocation(
       if ((await radiusOption.count()) > 0) {
         await radiusOption.click();
         await randomDelay();
+      } else {
+        console.warn(`Radius option "${radius} miles" not found in dropdown`);
       }
+    } else {
+      console.warn("Radius selector control not found near location input");
     }
+
+    const currentValue = await locationInput.inputValue().catch(() => null);
+    console.log(
+      `Marketplace location input value after selection: "${currentValue}"`
+    );
   } catch (error) {
     console.warn("Could not set marketplace location:", error);
   }
@@ -156,6 +181,8 @@ async function applyMarketplaceFilters(
   try {
     await filtersButton.click();
     await randomDelay(1500, 2500);
+
+    await setMarketplaceLocation(page, params.location, params.radius);
 
     if (params.priceMin > 0) {
       await fillFilterField(page, ["Min price", "Minimum price", "Price from"], params.priceMin);
@@ -460,7 +487,6 @@ async function scrapeWithPage(
     );
   }
 
-  await setMarketplaceLocation(page, params.location, params.radius);
   await applyMarketplaceFilters(page, params);
   await humanScroll(page, 2);
 
