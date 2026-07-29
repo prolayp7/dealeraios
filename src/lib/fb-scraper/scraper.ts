@@ -163,20 +163,32 @@ async function setMarketplaceLocation(
 
     const radiusSelect = page
       .locator('[role="combobox"], button, [aria-haspopup="listbox"]')
-      .filter({ hasText: /\d+\s*miles/i })
+      .filter({ hasText: /\d+\s*(mi|miles|km)\b/i })
       .first();
     if ((await radiusSelect.count()) > 0) {
       await radiusSelect.click();
       await randomDelay();
+
+      // The pill shows the abbreviated "39 mi" form, but option labels may use
+      // either "mi" or the full "miles" — match both rather than assuming one.
+      const radiusOptionPattern = new RegExp(`^\\s*${radius}\\s*(mi|miles)\\b`, "i");
       const radiusOption = page
         .locator('[role="option"]')
-        .filter({ hasText: `${radius} miles` })
+        .filter({ hasText: radiusOptionPattern })
         .first();
+
       if ((await radiusOption.count()) > 0) {
         await radiusOption.click();
         await randomDelay();
       } else {
-        console.warn(`Radius option "${radius} miles" not found in dropdown`);
+        const availableOptions = await page
+          .locator('[role="option"]')
+          .allInnerTexts()
+          .catch(() => []);
+        console.warn(
+          `Radius option matching "${radius} mi(les)" not found in dropdown. Available options:`,
+          JSON.stringify(availableOptions)
+        );
       }
     } else {
       console.warn("Radius selector control not found near location input");
