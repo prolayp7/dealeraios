@@ -169,24 +169,36 @@ async function setMarketplaceLocation(
       await radiusSelect.click();
       await randomDelay();
 
-      // The pill shows the abbreviated "39 mi" form, but option labels may use
-      // either "mi" or the full "miles" — match both rather than assuming one.
-      const radiusOptionPattern = new RegExp(`^\\s*${radius}\\s*(mi|miles)\\b`, "i");
-      const radiusOption = page
-        .locator('[role="option"]')
-        .filter({ hasText: radiusOptionPattern })
-        .first();
+      // Facebook only offers a fixed set of radius increments (e.g. 20, 39, 40,
+      // 60...) — there is usually no exact match for an arbitrary requested
+      // value, so pick the closest available option instead of demanding one.
+      const optionLocator = page.locator('[role="option"]');
+      const availableOptions = await optionLocator.allInnerTexts().catch(() => []);
 
-      if ((await radiusOption.count()) > 0) {
-        await radiusOption.click();
+      const parsed = availableOptions
+        .map((text, index) => {
+          const match = text.match(/(\d+)\s*(mi|miles|km)\b/i);
+          return match ? { index, value: parseInt(match[1], 10) } : null;
+        })
+        .filter((entry): entry is { index: number; value: number } => entry !== null);
+
+      if (parsed.length > 0) {
+        const notExceeding = parsed.filter((entry) => entry.value <= radius);
+        const best = (notExceeding.length > 0 ? notExceeding : parsed).reduce(
+          (closest, entry) =>
+            Math.abs(entry.value - radius) < Math.abs(closest.value - radius)
+              ? entry
+              : closest
+        );
+
+        await optionLocator.nth(best.index).click();
         await randomDelay();
+        console.log(
+          `Radius requested "${radius} mi" — no exact option, selected closest available: "${availableOptions[best.index]}"`
+        );
       } else {
-        const availableOptions = await page
-          .locator('[role="option"]')
-          .allInnerTexts()
-          .catch(() => []);
         console.warn(
-          `Radius option matching "${radius} mi(les)" not found in dropdown. Available options:`,
+          `No parseable radius options found in dropdown. Available options:`,
           JSON.stringify(availableOptions)
         );
       }
