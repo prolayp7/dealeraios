@@ -80,15 +80,39 @@ async function setMarketplaceLocation(
 ): Promise<void> {
   if (!location.trim()) return;
 
+  // On the real desktop layout the location/radius control is an always-visible
+  // pill in the sidebar (e.g. "Stroudsburg, Pennsylvania · Within 39 mi"), not
+  // an input hidden behind a "Filters" button — click it to open the editor
+  // popup that actually contains the editable location input.
+  const locationPill = page.getByText(/within\s+\d+\s*(mi|km)/i).first();
+  const pillVisible = await locationPill
+    .waitFor({ state: "visible", timeout: 5000 })
+    .then(() => true)
+    .catch(() => false);
+
+  if (pillVisible) {
+    await locationPill.click();
+    await randomDelay(1000, 1800);
+  } else {
+    console.warn(
+      'Marketplace location pill ("Within X mi") not found — trying to find the location input directly as a fallback'
+    );
+  }
+
   const locationInput = page
     .locator(
       'input[aria-label*="Location"], input[placeholder*="Location"], input[placeholder*="location"]'
     )
     .first();
 
-  if ((await locationInput.count()) === 0) {
+  const inputVisible = await locationInput
+    .waitFor({ state: "visible", timeout: 5000 })
+    .then(() => true)
+    .catch(() => false);
+
+  if (!inputVisible) {
     console.warn(
-      `Marketplace location input not found on page (wanted "${location}") — location filter was not applied`
+      `Marketplace location input not found after opening the location editor (wanted "${location}") — location filter was not applied`
     );
     return;
   }
@@ -170,17 +194,21 @@ async function applyMarketplaceFilters(
   page: Page,
   params: FbSearchParams
 ): Promise<void> {
-  const filtersButton = page
-    .locator(
-      'button:has-text("Filters"), [aria-label*="Filters"], a:has-text("Filters")'
-    )
-    .first();
-
-  if ((await filtersButton.count()) === 0) return;
-
   try {
-    await filtersButton.click();
-    await randomDelay(1500, 2500);
+    // Some layouts still gate extra filters behind a "Filters" button, but on
+    // the standard desktop search-results page Price/Location are already
+    // visible in the sidebar with no button to click — treat this as
+    // best-effort rather than a hard prerequisite.
+    const filtersButton = page
+      .locator(
+        'button:has-text("Filters"), [aria-label*="Filters"], a:has-text("Filters")'
+      )
+      .first();
+
+    if ((await filtersButton.count()) > 0) {
+      await filtersButton.click();
+      await randomDelay(1500, 2500);
+    }
 
     await setMarketplaceLocation(page, params.location, params.radius);
 
