@@ -276,8 +276,39 @@ async function applyMarketplaceFilters(
     // switching into it before looking for those fields. Best-effort: capture
     // evidence of what's actually there rather than guessing field labels.
     if (params.yearFrom > 0 || params.yearTo > 0 || params.mileageMax > 0) {
-      const vehiclesCategory = page.getByText(/^vehicles$/i);
-      if (await clickIfVisible(vehiclesCategory, "Vehicles category link")) {
+      const vehiclesCategory = page.getByText(/^vehicles$/i).first();
+      const count = await vehiclesCategory.count().catch(() => 0);
+      const allMatches = page.getByText(/^vehicles$/i);
+      const matchCount = await allMatches.count().catch(() => 0);
+      console.log(`Found ${matchCount} element(s) matching "Vehicles" text; using the first`);
+
+      const visible = count > 0
+        ? await vehiclesCategory
+            .waitFor({ state: "visible", timeout: 3000 })
+            .then(() => true)
+            .catch(() => false)
+        : false;
+
+      let clicked = false;
+      if (visible) {
+        const box = await vehiclesCategory.boundingBox().catch(() => null);
+        console.log("Vehicles category link bounding box:", JSON.stringify(box));
+
+        clicked = await vehiclesCategory
+          .click({ timeout: 3000 })
+          .then(() => true)
+          .catch(async (error) => {
+            console.warn("Vehicles category link found but click failed/timed out:", error);
+            await page
+              .screenshot({ path: "/tmp/fb-vehicles-category-click-fail.png", timeout: 10000 })
+              .catch((screenshotError) =>
+                console.warn("Debug screenshot also failed:", screenshotError)
+              );
+            return false;
+          });
+      }
+
+      if (clicked) {
         await page.waitForLoadState("networkidle").catch(() => {});
         await randomDelay(1500, 2500);
 
