@@ -191,6 +191,28 @@ async function setMarketplaceLocation(
   }
 }
 
+async function clickIfVisible(
+  locator: ReturnType<Page["locator"]>,
+  label: string
+): Promise<boolean> {
+  const visible = await locator
+    .first()
+    .waitFor({ state: "visible", timeout: 3000 })
+    .then(() => true)
+    .catch(() => false);
+
+  if (!visible) return false;
+
+  return locator
+    .first()
+    .click({ timeout: 3000 })
+    .then(() => true)
+    .catch((error) => {
+      console.warn(`${label} matched but click failed/timed out:`, error);
+      return false;
+    });
+}
+
 async function fillFilterField(
   page: Page,
   labels: string[],
@@ -215,14 +237,11 @@ async function applyMarketplaceFilters(
     // the standard desktop search-results page Price/Location are already
     // visible in the sidebar with no button to click — treat this as
     // best-effort rather than a hard prerequisite.
-    const filtersButton = page
-      .locator(
-        'button:has-text("Filters"), [aria-label*="Filters"], a:has-text("Filters")'
-      )
-      .first();
+    const filtersButton = page.locator(
+      'button:has-text("Filters"), [aria-label*="Filters"], a:has-text("Filters")'
+    );
 
-    if ((await filtersButton.count()) > 0) {
-      await filtersButton.click();
+    if (await clickIfVisible(filtersButton, "Filters button")) {
       await randomDelay(1500, 2500);
     }
 
@@ -248,13 +267,10 @@ async function applyMarketplaceFilters(
       );
     }
 
-    const applyButton = page
-      .locator(
-        'button:has-text("Apply"), button:has-text("Show results"), [aria-label*="Apply"]'
-      )
-      .first();
-    if ((await applyButton.count()) > 0) {
-      await applyButton.click();
+    const applyButton = page.locator(
+      'button:has-text("Apply"), button:has-text("Show results"), [aria-label*="Apply"]'
+    );
+    if (await clickIfVisible(applyButton, "Apply/Show results button")) {
       await randomDelay(2000, 3500);
     }
   } catch (error) {
