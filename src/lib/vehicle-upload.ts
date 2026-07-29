@@ -1,3 +1,4 @@
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { mkdir, writeFile } from "fs/promises";
 import { randomUUID } from "crypto";
 import { createServerClient } from "@/lib/supabase/server";
@@ -36,10 +37,15 @@ async function saveLocalUpload(buffer: Buffer, ext: string): Promise<string> {
 export async function uploadVehicleImage(
   buffer: Buffer,
   contentType: string,
-  ext: string
+  ext: string,
+  // Callers running without a user session (the Airtable cron sync) must pass
+  // the client they already authenticated with — otherwise createServerClient()
+  // yields an anonymous client, the storage upload fails on permissions, and
+  // photos silently land on local disk instead of Supabase Storage.
+  client?: SupabaseClient
 ): Promise<{ url: string; storage: "supabase" | "local" }> {
   const objectPath = `${randomUUID()}.${ext}`;
-  const supabase = await createServerClient();
+  const supabase = client ?? (await createServerClient());
 
   let { error: uploadError } = await uploadToSupabase(
     supabase,

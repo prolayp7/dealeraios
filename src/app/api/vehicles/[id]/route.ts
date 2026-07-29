@@ -78,6 +78,42 @@ export async function DELETE(_request: Request, props: { params: Promise<{ id: s
   const params = await props.params;
   try {
     const supabase = await createServerClient();
+
+    // Deletion is never propagated to Airtable (explicit non-goal), so deleting
+    // a linked vehicle while sync is on is silently undone: the next sync sees
+    // an Airtable record with no local link and recreates it under a fresh id,
+    // losing local-only data. Block it with a 409 instead of pretending.
+    const { data: vehicle, error: fetchError } = await supabase
+      .from("vehicles")
+      .select("airtable_record_id, dealership_id")
+      .eq("id", params.id)
+      .single();
+
+    if (fetchError || !vehicle) {
+      return NextResponse.json({ error: "Vehicle not found" }, { status: 404 });
+    }
+
+    if (vehicle.airtable_record_id) {
+      const { data: settings, error: settingsError } = await supabase
+        .from("dealership_settings")
+        .select("airtable_config")
+        .eq("dealership_id", vehicle.dealership_id)
+        .maybeSingle();
+
+      if (settingsError) throw settingsError;
+
+      const airtableConfig = settings?.airtable_config as { enabled?: boolean } | undefined;
+      if (airtableConfig?.enabled) {
+        return NextResponse.json(
+          {
+            error:
+              "This vehicle is linked to Airtable and sync is enabled — the next sync would recreate it. Disable Airtable sync first, or delete the record in Airtable to unlink it before deleting here.",
+          },
+          { status: 409 }
+        );
+      }
+    }
+
     const { error } = await supabase
       .from("vehicles")
       .delete()

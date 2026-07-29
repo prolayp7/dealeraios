@@ -1,3 +1,5 @@
+import type { ColumnMapping } from "./import-column-mapper";
+
 export type AiPriority =
   | "LIST NOW"
   | "HOLD"
@@ -45,6 +47,13 @@ export interface Vehicle {
   fb_listing_status: FbListingStatus | null;
   image_url: string | null;
   image_urls: string[] | null;
+  color: string | null;
+  code: string | null;
+  lot_location: string | null;
+  sold_date: string | null;
+  airtable_record_id: string | null;
+  airtable_synced_at: string | null;
+  updated_at: string;
   created_at: string;
 }
 
@@ -89,6 +98,10 @@ export interface VehicleFormData {
   fb_listing_status?: FbListingStatus | null;
   image_url?: string | null;
   image_urls?: string[] | null;
+  color?: string | null;
+  code?: string | null;
+  lot_location?: string | null;
+  sold_date?: string | null;
 }
 
 export interface AiExtractedVehicle {
@@ -206,12 +219,24 @@ export interface MarketplaceAccount {
   label: string;
 }
 
+export interface AirtableConfig {
+  enabled: boolean;
+  personal_access_token: string;
+  base_id: string;
+  table_name: string;
+  last_modified_field: string;
+  column_mapping: ColumnMapping;
+  last_synced_at: string | null;
+  last_sync_error: string | null;
+}
+
 export interface DealershipSettings {
   dealership_id: string;
   company: { name?: string; address?: string; phone?: string };
   inactivity_threshold_hours: number;
   ai_settings: { default_listing_template?: string };
   marketplace_accounts: MarketplaceAccount[];
+  airtable_config: AirtableConfig;
   updated_at: string;
 }
 

@@ -61,7 +61,12 @@ export function computeActionRequired(priority: AiPriority): string {
 
 export function enrichVehicle(data: VehicleFormData & { id?: string }): Omit<
   Vehicle,
-  "id" | "created_at" | "dealership_id"
+  | "id"
+  | "created_at"
+  | "dealership_id"
+  | "airtable_record_id"
+  | "airtable_synced_at"
+  | "updated_at"
 > & { id?: string } {
   const myCost = data.my_cost ?? 0;
   const repairCost = data.repair_cost ?? 0;
@@ -129,6 +134,10 @@ export function enrichVehicle(data: VehicleFormData & { id?: string }): Omit<
     fb_listing_status: data.fb_listing_status ?? null,
     image_url: syncedImages.image_url,
     image_urls: syncedImages.image_urls,
+    color: data.color ?? null,
+    code: data.code ?? null,
+    lot_location: data.lot_location ?? null,
+    sold_date: data.sold_date ?? null,
   };
 }
 
