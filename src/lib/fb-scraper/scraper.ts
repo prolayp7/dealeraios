@@ -80,44 +80,60 @@ async function setMarketplaceLocation(
 ): Promise<void> {
   if (!location.trim()) return;
 
-  // On the real desktop layout the location/radius control is an always-visible
-  // pill in the sidebar (e.g. "Stroudsburg, Pennsylvania · Within 39 mi"), not
-  // an input hidden behind a "Filters" button — click it to open the editor
-  // popup that actually contains the editable location input.
-  const locationPill = page.getByText(/within\s+\d+\s*(mi|km)/i).first();
-  const pillVisible = await locationPill
-    .waitFor({ state: "visible", timeout: 5000 })
-    .then(() => true)
-    .catch(() => false);
-
-  if (pillVisible) {
-    await locationPill.click();
-    await randomDelay(1000, 1800);
-  } else {
-    console.warn(
-      'Marketplace location pill ("Within X mi") not found — trying to find the location input directly as a fallback'
-    );
-  }
-
-  const locationInput = page
-    .locator(
-      'input[aria-label*="Location"], input[placeholder*="Location"], input[placeholder*="location"]'
-    )
-    .first();
-
-  const inputVisible = await locationInput
-    .waitFor({ state: "visible", timeout: 5000 })
-    .then(() => true)
-    .catch(() => false);
-
-  if (!inputVisible) {
-    console.warn(
-      `Marketplace location input not found after opening the location editor (wanted "${location}") — location filter was not applied`
-    );
-    return;
-  }
-
   try {
+    // On the real desktop layout the location/radius control is an always-visible
+    // pill in the sidebar (e.g. "Stroudsburg, Pennsylvania · Within 39 mi"), not
+    // an input hidden behind a "Filters" button — click it to open the editor
+    // popup that actually contains the editable location input.
+    const locationPill = page.getByText(/within\s+\d+\s*(mi|km)/i).first();
+    const pillVisible = await locationPill
+      .waitFor({ state: "visible", timeout: 5000 })
+      .then(() => true)
+      .catch(() => false);
+
+    if (pillVisible) {
+      const pillBox = await locationPill.boundingBox().catch(() => null);
+      console.log("Location pill bounding box:", JSON.stringify(pillBox));
+
+      const pillClicked = await locationPill
+        .click({ timeout: 5000 })
+        .then(() => true)
+        .catch(async (error) => {
+          console.warn("Location pill found but click failed/timed out:", error);
+          await page
+            .screenshot({ path: "/tmp/fb-location-pill-click-fail.png", timeout: 10000 })
+            .catch((screenshotError) =>
+              console.warn("Debug screenshot for pill-click failure also failed:", screenshotError)
+            );
+          return false;
+        });
+      if (pillClicked) {
+        await randomDelay(1000, 1800);
+      }
+    } else {
+      console.warn(
+        'Marketplace location pill ("Within X mi") not found — trying to find the location input directly as a fallback'
+      );
+    }
+
+    const locationInput = page
+      .locator(
+        'input[aria-label*="Location"], input[placeholder*="Location"], input[placeholder*="location"]'
+      )
+      .first();
+
+    const inputVisible = await locationInput
+      .waitFor({ state: "visible", timeout: 5000 })
+      .then(() => true)
+      .catch(() => false);
+
+    if (!inputVisible) {
+      console.warn(
+        `Marketplace location input not found after opening the location editor (wanted "${location}") — location filter was not applied`
+      );
+      return;
+    }
+
     await locationInput.click();
     await randomDelay();
     await locationInput.fill(location);
