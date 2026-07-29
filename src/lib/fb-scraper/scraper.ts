@@ -215,7 +215,10 @@ async function setMarketplaceLocation(
     // location" modal itself stays open until its own Apply button is
     // clicked — and its backdrop blocks every click to the rest of the page
     // until it's closed, breaking every step that runs after this one.
-    const modalApplyButton = page.locator('button:has-text("Apply")');
+    // Facebook's "Apply" here is a styled div[role="button"], not a native
+    // <button>, so use the ARIA-aware role locator rather than a CSS tag
+    // selector that would never match it.
+    const modalApplyButton = page.getByRole("button", { name: "Apply", exact: true });
     if (await clickIfVisible(modalApplyButton, "Change location modal Apply button")) {
       await randomDelay(1000, 1800);
     }
@@ -234,7 +237,10 @@ async function clickIfVisible(
     .then(() => true)
     .catch(() => false);
 
-  if (!visible) return false;
+  if (!visible) {
+    console.warn(`${label} not found/visible`);
+    return false;
+  }
 
   return locator
     .first()
