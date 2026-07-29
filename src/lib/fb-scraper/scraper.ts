@@ -210,6 +210,15 @@ async function setMarketplaceLocation(
     console.log(
       `Marketplace location input value after selection: "${currentValue}"`
     );
+
+    // The location/radius selections take effect live, but the "Change
+    // location" modal itself stays open until its own Apply button is
+    // clicked — and its backdrop blocks every click to the rest of the page
+    // until it's closed, breaking every step that runs after this one.
+    const modalApplyButton = page.locator('button:has-text("Apply")');
+    if (await clickIfVisible(modalApplyButton, "Change location modal Apply button")) {
+      await randomDelay(1000, 1800);
+    }
   } catch (error) {
     console.warn("Could not set marketplace location:", error);
   }
