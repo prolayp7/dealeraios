@@ -271,6 +271,35 @@ async function applyMarketplaceFilters(
 
     await setMarketplaceLocation(page, params.location, params.radius);
 
+    // Year/mileage filters likely only exist under the Vehicles category's
+    // dedicated filter panel, not the generic keyword-search sidebar — try
+    // switching into it before looking for those fields. Best-effort: capture
+    // evidence of what's actually there rather than guessing field labels.
+    if (params.yearFrom > 0 || params.yearTo > 0 || params.mileageMax > 0) {
+      const vehiclesCategory = page.getByText(/^vehicles$/i);
+      if (await clickIfVisible(vehiclesCategory, "Vehicles category link")) {
+        await page.waitForLoadState("networkidle").catch(() => {});
+        await randomDelay(1500, 2500);
+
+        await page
+          .screenshot({ path: "/tmp/fb-vehicles-category.png", timeout: 10000 })
+          .catch((error) => console.warn("Vehicles category screenshot failed:", error));
+
+        const sidebarLabels = await page
+          .locator('label, [role="heading"], h2, h3')
+          .allInnerTexts()
+          .catch(() => []);
+        console.log(
+          "Vehicles category sidebar labels/headings:",
+          JSON.stringify(sidebarLabels)
+        );
+      } else {
+        console.warn(
+          "Vehicles category link not found/clickable — year/mileage fields likely unavailable in this view"
+        );
+      }
+    }
+
     if (params.priceMin > 0) {
       await fillFilterField(page, ["Min price", "Minimum price", "Price from"], params.priceMin);
     }
