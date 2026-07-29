@@ -516,6 +516,13 @@ async function scrapeWithPage(
   }
 
   await applyMarketplaceFilters(page, params);
+
+  // Changing location/radius triggers an async feed refresh — give Facebook
+  // time to swap in the new results before scrolling/collecting, otherwise
+  // extraction can capture a mix of stale (pre-change) and fresh listing cards.
+  await page.waitForLoadState("networkidle").catch(() => {});
+  await randomDelay(2000, 3000);
+
   await humanScroll(page, 2);
 
   return extractListings(page, params);
