@@ -3,6 +3,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { syncDealershipAirtable, type SyncResult } from "@/lib/airtable-sync";
 import { isAuthorizedCronRequest } from "@/lib/cron-auth";
 import { DEFAULT_AIRTABLE_CONFIG } from "@/lib/airtable-config";
+import { errorMessage } from "@/lib/utils";
 import type { AirtableConfig } from "@/lib/types";
 
 export const runtime = "nodejs";
@@ -41,7 +42,7 @@ export async function POST(request: Request) {
       result = await syncDealershipAirtable(row.dealership_id, config, admin);
       results.push(result);
     } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
+      const message = errorMessage(err);
       results.push({ created: 0, updated: 0, pushedToAirtable: 0, linked: 0, errors: [message] });
       // Update dealership_settings with error
       try {

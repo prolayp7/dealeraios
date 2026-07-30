@@ -23,3 +23,24 @@ export function formatPercent(value: number | null | undefined): string {
   if (value == null) return "—";
   return `${value.toFixed(1)}%`;
 }
+
+// Supabase's PostgrestError (and similar) are plain objects, not Error
+// instances, so `err instanceof Error` misses them and `String(err)` on a
+// plain object yields the useless "[object Object]" — check for a string
+// `message` property before falling back to a JSON dump.
+export function errorMessage(err: unknown): string {
+  if (err instanceof Error) return err.message;
+  if (
+    typeof err === "object" &&
+    err !== null &&
+    "message" in err &&
+    typeof (err as { message: unknown }).message === "string"
+  ) {
+    return (err as { message: string }).message;
+  }
+  try {
+    return JSON.stringify(err);
+  } catch {
+    return String(err);
+  }
+}

@@ -5,6 +5,7 @@ import { listAllAirtableRecords } from "@/lib/airtable-client";
 import { mapAirtableFieldsToVehicle } from "@/lib/airtable-field-mapping";
 import { enrichVehicle } from "@/lib/vehicle-logic";
 import { maskAirtableConfig } from "@/lib/airtable-config";
+import { errorMessage } from "@/lib/utils";
 import type { AirtableConfig } from "@/lib/types";
 import { isImportableVehicle, type ColumnMapping } from "@/lib/import-column-mapper";
 
@@ -80,9 +81,7 @@ export async function POST(request: Request) {
         if (syncedError) throw syncedError;
         imported++;
       } catch (err) {
-        errors.push(
-          `Airtable record ${record.id}: ${err instanceof Error ? err.message : String(err)}`
-        );
+        errors.push(`Airtable record ${record.id}: ${errorMessage(err)}`);
       }
     }
 

@@ -9,6 +9,7 @@ import {
 import { mapAirtableFieldsToVehicle, mapVehicleToAirtableFields } from "@/lib/airtable-field-mapping";
 import { enrichVehicle } from "@/lib/vehicle-logic";
 import { isImportableVehicle } from "@/lib/import-column-mapper";
+import { errorMessage } from "@/lib/utils";
 import type { AirtableConfig, Vehicle } from "@/lib/types";
 
 export type SyncDirection = "pull" | "push" | "none";
@@ -204,7 +205,7 @@ export async function syncDealershipAirtable(
       }
       result.updated++;
     } catch (err) {
-      result.errors.push(`Vehicle ${vehicle.id}: ${err instanceof Error ? err.message : String(err)}`);
+      result.errors.push(`Vehicle ${vehicle.id}: ${errorMessage(err)}`);
     }
   }
 
@@ -268,7 +269,7 @@ export async function syncDealershipAirtable(
     } catch (err) {
       // Deliberately NOT falling through to create: a failed link would
       // otherwise duplicate the vehicle. Skip it and retry next sync.
-      result.errors.push(`Airtable record ${record.id}: ${err instanceof Error ? err.message : String(err)}`);
+      result.errors.push(`Airtable record ${record.id}: ${errorMessage(err)}`);
     }
   }
 
@@ -277,7 +278,7 @@ export async function syncDealershipAirtable(
       const created = await createVehicleFromAirtableRecord(supabase, dealershipId, record, config);
       if (created) result.created++;
     } catch (err) {
-      result.errors.push(`Airtable record ${record.id}: ${err instanceof Error ? err.message : String(err)}`);
+      result.errors.push(`Airtable record ${record.id}: ${errorMessage(err)}`);
     }
   }
 
@@ -293,7 +294,7 @@ export async function syncDealershipAirtable(
       if (error) throw error;
       result.pushedToAirtable++;
     } catch (err) {
-      result.errors.push(`Vehicle ${vehicle.id}: ${err instanceof Error ? err.message : String(err)}`);
+      result.errors.push(`Vehicle ${vehicle.id}: ${errorMessage(err)}`);
     }
   }
 

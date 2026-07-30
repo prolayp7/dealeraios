@@ -3,6 +3,7 @@ import { getSessionDealership } from "@/lib/supabase/session";
 import { createServerClient } from "@/lib/supabase/server";
 import { syncDealershipAirtable } from "@/lib/airtable-sync";
 import { DEFAULT_AIRTABLE_CONFIG } from "@/lib/airtable-config";
+import { errorMessage } from "@/lib/utils";
 import type { AirtableConfig } from "@/lib/types";
 
 export const runtime = "nodejs";
@@ -33,7 +34,7 @@ export async function POST() {
     try {
       result = await syncDealershipAirtable(session.dealershipId, config, supabase);
     } catch (syncError) {
-      const message = syncError instanceof Error ? syncError.message : String(syncError);
+      const message = errorMessage(syncError);
       // Persist the error to dealership_settings even though sync failed
       try {
         await supabase
