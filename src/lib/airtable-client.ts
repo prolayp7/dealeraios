@@ -14,6 +14,12 @@ function tableUrl(config: AirtableClientConfig, suffix = ""): string {
   return `https://api.airtable.com/v0/${config.baseId}/${encodeURIComponent(config.tableName)}${suffix}`;
 }
 
+interface AirtableTableSchema {
+  id: string;
+  name: string;
+  fields: { id: string; name: string; type: string }[];
+}
+
 async function airtableFetch(
   url: string,
   config: AirtableClientConfig,
@@ -38,6 +44,25 @@ async function airtableFetch(
 
   const body = await response.json();
   return body;
+}
+
+// Record-sampling (listAirtableRecords) only surfaces fields that have a
+// non-empty value on at least one sampled row, so a freshly-added field
+// (e.g. a Last Modified Time column no existing row has triggered yet)
+// silently doesn't show up. The base schema is authoritative and complete
+// regardless of data, so prefer it; callers fall back to sampling if the
+// PAT lacks the `schema.bases:read` scope this endpoint requires.
+export async function getAirtableTableFieldNames(
+  config: AirtableClientConfig
+): Promise<string[]> {
+  const body = (await airtableFetch(
+    `https://api.airtable.com/v0/meta/bases/${config.baseId}/tables`,
+    config
+  )) as { tables: AirtableTableSchema[] };
+
+  const table = (body.tables ?? []).find((t) => t.name === config.tableName);
+  if (!table) throw new Error(`Table "${config.tableName}" not found in base schema`);
+  return table.fields.map((field) => field.name);
 }
 
 export async function listAirtableRecords(

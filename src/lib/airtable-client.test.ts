@@ -4,6 +4,7 @@ import {
   listAllAirtableRecords,
   createAirtableRecord,
   updateAirtableRecord,
+  getAirtableTableFieldNames,
 } from "./airtable-client";
 
 const config = { personalAccessToken: "patTEST", baseId: "appTEST", tableName: "Command Center" };
@@ -110,4 +111,48 @@ test("throws when a successful response has invalid JSON", async () => {
   vi.stubGlobal("fetch", fetchMock);
 
   await expect(listAirtableRecords(config)).rejects.toThrow("Unexpected token");
+});
+
+test("getAirtableTableFieldNames returns every schema field, including ones with no data yet", async () => {
+  const fetchMock = vi.fn().mockResolvedValue({
+    ok: true,
+    json: async () => ({
+      tables: [
+        {
+          id: "tblOther",
+          name: "Parts",
+          fields: [{ id: "fld1", name: "Part Name", type: "singleLineText" }],
+        },
+        {
+          id: "tblTEST",
+          name: "Command Center",
+          fields: [
+            { id: "fld2", name: "Make", type: "singleLineText" },
+            { id: "fld3", name: "Last Modified", type: "lastModifiedTime" },
+          ],
+        },
+      ],
+    }),
+  });
+  vi.stubGlobal("fetch", fetchMock);
+
+  const fieldNames = await getAirtableTableFieldNames(config);
+
+  expect(fetchMock).toHaveBeenCalledWith(
+    "https://api.airtable.com/v0/meta/bases/appTEST/tables",
+    expect.objectContaining({ headers: expect.objectContaining({ Authorization: "Bearer patTEST" }) })
+  );
+  expect(fieldNames).toEqual(["Make", "Last Modified"]);
+});
+
+test("getAirtableTableFieldNames throws when the configured table isn't in the base schema", async () => {
+  const fetchMock = vi.fn().mockResolvedValue({
+    ok: true,
+    json: async () => ({ tables: [{ id: "tblOther", name: "Parts", fields: [] }] }),
+  });
+  vi.stubGlobal("fetch", fetchMock);
+
+  await expect(getAirtableTableFieldNames(config)).rejects.toThrow(
+    'Table "Command Center" not found in base schema'
+  );
 });

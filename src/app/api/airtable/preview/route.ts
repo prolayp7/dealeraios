@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getSessionDealership } from "@/lib/supabase/session";
 import { createServerClient } from "@/lib/supabase/server";
-import { listAirtableRecords } from "@/lib/airtable-client";
+import { getAirtableTableFieldNames, listAirtableRecords } from "@/lib/airtable-client";
 
 interface PreviewRequestBody {
   personalAccessToken: string;
@@ -25,18 +25,23 @@ export async function POST(request: Request) {
       );
     }
 
-    const { records } = await listAirtableRecords(
-      {
-        personalAccessToken: body.personalAccessToken,
-        baseId: body.baseId,
-        tableName: body.tableName,
-      },
-      { pageSize: 20 }
-    );
+    const clientConfig = {
+      personalAccessToken: body.personalAccessToken,
+      baseId: body.baseId,
+      tableName: body.tableName,
+    };
 
-    const fieldNames = Array.from(
-      new Set(records.flatMap((record) => Object.keys(record.fields)))
-    );
+    const { records } = await listAirtableRecords(clientConfig, { pageSize: 20 });
+
+    // The schema endpoint lists every column regardless of whether any row
+    // has data in it yet; fall back to sampled record keys if the PAT wasn't
+    // granted schema.bases:read.
+    let fieldNames: string[];
+    try {
+      fieldNames = await getAirtableTableFieldNames(clientConfig);
+    } catch {
+      fieldNames = Array.from(new Set(records.flatMap((record) => Object.keys(record.fields))));
+    }
 
     return NextResponse.json({ fieldNames, sampleCount: records.length });
   } catch (error) {
