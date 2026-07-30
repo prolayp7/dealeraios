@@ -102,15 +102,18 @@ function parseCookiesFromEnv(rawCookies: string): Cookie[] {
   return mapExtensionCookies(parsedCookies);
 }
 
-async function resolveCookies(): Promise<Cookie[]> {
-  const rawCookies = process.env.FB_COOKIES;
-  if (rawCookies) {
-    return parseCookiesFromEnv(rawCookies);
-  }
-
+export async function resolveCookies(): Promise<Cookie[]> {
+  // The saved session file is kept fresh by the "Export FB Session" flow
+  // (saveFbCookies), so it must win over FB_COOKIES, which is only a
+  // bootstrap seed for first run before any session has been exported.
   const savedCookies = await loadFbCookies();
   if (savedCookies.length > 0) {
     return savedCookies;
+  }
+
+  const rawCookies = process.env.FB_COOKIES;
+  if (rawCookies) {
+    return parseCookiesFromEnv(rawCookies);
   }
 
   throw new ScraperError(
