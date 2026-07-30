@@ -316,23 +316,17 @@ export async function isProfileRunning(
 }
 
 async function requestStopProfile(config: MultiloginConfig): Promise<void> {
-  const stopUrls = [
-    `${MLX_LAUNCHER}/api/v1/profile/stop?profile_id=${config.profileId}`,
-    `${MLX_LAUNCHER}/api/v2/profile/stop/p/${config.profileId}`,
-    `${MLX_LAUNCHER}/api/v1/profile/stop/p/${config.profileId}`,
-  ];
+  const url = `${MLX_LAUNCHER}/api/v1/profile/stop/p/${config.profileId}`;
 
-  for (const url of stopUrls) {
-    try {
-      await httpGet(url, config.apiToken);
-    } catch (error) {
-      throwIfLauncherUnreachable(error);
-      console.warn(
-        "Multilogin stop request failed:",
-        url,
-        error instanceof Error ? error.message : error
-      );
-    }
+  try {
+    await httpGet(url, config.apiToken);
+  } catch (error) {
+    throwIfLauncherUnreachable(error);
+    console.warn(
+      "Multilogin stop request failed:",
+      url,
+      error instanceof Error ? error.message : error
+    );
   }
 }
 
