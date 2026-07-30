@@ -126,6 +126,7 @@ describe("coerceFieldsForAirtableSchema", () => {
   const schema = [
     { id: "fld1", name: "Listed Online", type: "multipleSelects", choices: ["Yes", "NO"] },
     { id: "fld2", name: "Make", type: "singleLineText" },
+    { id: "fld3", name: "Status", type: "multipleSelects", choices: ["SOLD ", "AVAILABLE"] },
   ];
 
   test("converts a true boolean into a single-item choice array for multipleSelects", () => {
@@ -143,8 +144,18 @@ describe("coerceFieldsForAirtableSchema", () => {
     expect(result).toEqual({ Unknown: true });
   });
 
-  test("passes non-boolean values through unchanged", () => {
+  test("passes plain strings through unchanged for non-select fields", () => {
     const result = coerceFieldsForAirtableSchema({ Make: "Honda" }, schema);
     expect(result).toEqual({ Make: "Honda" });
+  });
+
+  test("wraps a plain string into a single-item array for multipleSelects, even with no exact choice match", () => {
+    const result = coerceFieldsForAirtableSchema({ Status: "In Stock" }, schema);
+    expect(result).toEqual({ Status: ["In Stock"] });
+  });
+
+  test("wraps an empty string into an empty array for multipleSelects instead of an invalid bare string", () => {
+    const result = coerceFieldsForAirtableSchema({ Status: "" }, schema);
+    expect(result).toEqual({ Status: [] });
   });
 });

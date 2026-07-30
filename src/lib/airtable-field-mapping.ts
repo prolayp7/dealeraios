@@ -131,13 +131,18 @@ function findChoice(choices: string[], pattern: RegExp): string | undefined {
 }
 
 // mapVehicleToAirtableFields sends this app's own types (e.g. a plain
-// boolean for listed_online) verbatim. A dealer is free to map any app field
-// onto any Airtable column regardless of type, and Airtable's API rejects a
-// bare boolean against a select field ("Cannot parse value for field ...")
-// instead of coercing it — so translate booleans into a matching Yes/No-style
-// choice using the base's real schema. Fields the base doesn't expose via
-// schema.bases:read (or that aren't select/boolean mismatches) pass through
-// unchanged, preserving today's behavior.
+// boolean for listed_online, a plain string for status) verbatim. A dealer
+// is free to map any app field onto any Airtable column regardless of type,
+// and Airtable's API rejects shape mismatches against select fields
+// ("Cannot parse value for field ...") instead of coercing them — a bare
+// boolean, or a bare string against a *multipleSelects* field, which always
+// wants an array even for a single choice. Booleans get translated into a
+// matching Yes/No-style choice using the base's real schema; strings just
+// get array-wrapped for multipleSelects (createAirtableRecord/
+// updateAirtableRecord pass typecast: true, so a string that doesn't
+// exactly match an existing option becomes a new one instead of erroring).
+// Fields the base doesn't expose via schema.bases:read (or that aren't a
+// select-type mismatch) pass through unchanged, preserving today's behavior.
 export function coerceFieldsForAirtableSchema(
   fields: Record<string, unknown>,
   schema: AirtableFieldSchema[]
@@ -153,11 +158,12 @@ export function coerceFieldsForAirtableSchema(
       const falsy = findChoice(fieldSchema.choices, /^(no|false|n)$/i);
       const match = value ? truthy : falsy;
 
-      if (fieldSchema.type === "multipleSelects") {
-        result[name] = match ? [match] : [];
-      } else {
-        result[name] = match ?? value;
-      }
+      result[name] = fieldSchema.type === "multipleSelects" ? (match ? [match] : []) : (match ?? value);
+      continue;
+    }
+
+    if (typeof value === "string" && fieldSchema?.type === "multipleSelects") {
+      result[name] = value ? [value] : [];
       continue;
     }
 

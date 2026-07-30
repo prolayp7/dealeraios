@@ -123,13 +123,17 @@ export async function listAllAirtableRecords(
   return all;
 }
 
+// typecast lets Airtable auto-create a missing select option (e.g. this
+// app's "In Stock" status has no matching choice yet in the dealer's base)
+// instead of hard-rejecting the write — the same server-side coercion the
+// Airtable web UI relies on when you type a new option into a select cell.
 export async function createAirtableRecord(
   config: AirtableClientConfig,
   fields: Record<string, unknown>
 ): Promise<AirtableRecord> {
   return (await airtableFetch(tableUrl(config), config, {
     method: "POST",
-    body: JSON.stringify({ fields }),
+    body: JSON.stringify({ fields, typecast: true }),
   })) as AirtableRecord;
 }
 
@@ -140,6 +144,6 @@ export async function updateAirtableRecord(
 ): Promise<AirtableRecord> {
   return (await airtableFetch(tableUrl(config, `/${recordId}`), config, {
     method: "PATCH",
-    body: JSON.stringify({ fields }),
+    body: JSON.stringify({ fields, typecast: true }),
   })) as AirtableRecord;
 }

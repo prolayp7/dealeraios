@@ -69,7 +69,7 @@ test("createAirtableRecord POSTs fields and returns the created record", async (
     expect.stringContaining("https://api.airtable.com/v0/appTEST/Command%20Center"),
     expect.objectContaining({
       method: "POST",
-      body: JSON.stringify({ fields: { Make: "Honda" } }),
+      body: JSON.stringify({ fields: { Make: "Honda" }, typecast: true }),
     })
   );
   expect(record.id).toBe("recNEW");
@@ -86,7 +86,10 @@ test("updateAirtableRecord PATCHes the specific record", async () => {
 
   expect(fetchMock).toHaveBeenCalledWith(
     expect.stringContaining("/v0/appTEST/Command%20Center/rec1"),
-    expect.objectContaining({ method: "PATCH", body: JSON.stringify({ fields: { Make: "Honda" } }) })
+    expect.objectContaining({
+      method: "PATCH",
+      body: JSON.stringify({ fields: { Make: "Honda" }, typecast: true }),
+    })
   );
 });
 
