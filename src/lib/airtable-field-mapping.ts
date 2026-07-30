@@ -7,6 +7,7 @@ import {
   type ColumnMapping,
 } from "@/lib/import-column-mapper";
 import { uploadVehicleImage } from "@/lib/vehicle-upload";
+import type { AirtableFieldSchema } from "@/lib/airtable-client";
 
 interface AirtableAttachment {
   url: string;
@@ -123,4 +124,45 @@ export function mapVehicleToAirtableFields(
   }
 
   return fields;
+}
+
+function findChoice(choices: string[], pattern: RegExp): string | undefined {
+  return choices.find((choice) => pattern.test(choice.trim()));
+}
+
+// mapVehicleToAirtableFields sends this app's own types (e.g. a plain
+// boolean for listed_online) verbatim. A dealer is free to map any app field
+// onto any Airtable column regardless of type, and Airtable's API rejects a
+// bare boolean against a select field ("Cannot parse value for field ...")
+// instead of coercing it — so translate booleans into a matching Yes/No-style
+// choice using the base's real schema. Fields the base doesn't expose via
+// schema.bases:read (or that aren't select/boolean mismatches) pass through
+// unchanged, preserving today's behavior.
+export function coerceFieldsForAirtableSchema(
+  fields: Record<string, unknown>,
+  schema: AirtableFieldSchema[]
+): Record<string, unknown> {
+  const schemaByName = new Map(schema.map((field) => [field.name, field]));
+  const result: Record<string, unknown> = {};
+
+  for (const [name, value] of Object.entries(fields)) {
+    const fieldSchema = schemaByName.get(name);
+
+    if (typeof value === "boolean" && fieldSchema?.choices?.length) {
+      const truthy = findChoice(fieldSchema.choices, /^(yes|true|y)$/i);
+      const falsy = findChoice(fieldSchema.choices, /^(no|false|n)$/i);
+      const match = value ? truthy : falsy;
+
+      if (fieldSchema.type === "multipleSelects") {
+        result[name] = match ? [match] : [];
+      } else {
+        result[name] = match ?? value;
+      }
+      continue;
+    }
+
+    result[name] = value;
+  }
+
+  return result;
 }

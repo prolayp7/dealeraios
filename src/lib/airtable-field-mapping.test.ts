@@ -1,5 +1,9 @@
 import { describe, expect, test, vi } from "vitest";
-import { mapAirtableFieldsToVehicle, mapVehicleToAirtableFields } from "./airtable-field-mapping";
+import {
+  mapAirtableFieldsToVehicle,
+  mapVehicleToAirtableFields,
+  coerceFieldsForAirtableSchema,
+} from "./airtable-field-mapping";
 
 vi.mock("@/lib/vehicle-upload", () => ({
   uploadVehicleImage: vi.fn(async (_buffer: Buffer, _contentType: string, ext: string) => ({
@@ -115,5 +119,32 @@ describe("mapVehicleToAirtableFields", () => {
       mapping
     );
     expect(fields).toEqual({});
+  });
+});
+
+describe("coerceFieldsForAirtableSchema", () => {
+  const schema = [
+    { id: "fld1", name: "Listed Online", type: "multipleSelects", choices: ["Yes", "NO"] },
+    { id: "fld2", name: "Make", type: "singleLineText" },
+  ];
+
+  test("converts a true boolean into a single-item choice array for multipleSelects", () => {
+    const result = coerceFieldsForAirtableSchema({ "Listed Online": true, Make: "BMW" }, schema);
+    expect(result).toEqual({ "Listed Online": ["Yes"], Make: "BMW" });
+  });
+
+  test("converts a false boolean by matching the No-style choice, case-insensitively", () => {
+    const result = coerceFieldsForAirtableSchema({ "Listed Online": false }, schema);
+    expect(result).toEqual({ "Listed Online": ["NO"] });
+  });
+
+  test("passes booleans through unchanged when the field has no schema entry", () => {
+    const result = coerceFieldsForAirtableSchema({ Unknown: true }, schema);
+    expect(result).toEqual({ Unknown: true });
+  });
+
+  test("passes non-boolean values through unchanged", () => {
+    const result = coerceFieldsForAirtableSchema({ Make: "Honda" }, schema);
+    expect(result).toEqual({ Make: "Honda" });
   });
 });

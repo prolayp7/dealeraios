@@ -14,10 +14,23 @@ function tableUrl(config: AirtableClientConfig, suffix = ""): string {
   return `https://api.airtable.com/v0/${config.baseId}/${encodeURIComponent(config.tableName)}${suffix}`;
 }
 
+export interface AirtableFieldSchema {
+  id: string;
+  name: string;
+  type: string;
+  // Only present for singleSelect/multipleSelects fields.
+  choices?: string[];
+}
+
 interface AirtableTableSchema {
   id: string;
   name: string;
-  fields: { id: string; name: string; type: string }[];
+  fields: {
+    id: string;
+    name: string;
+    type: string;
+    options?: { choices?: { id: string; name: string }[] };
+  }[];
 }
 
 async function airtableFetch(
@@ -52,9 +65,9 @@ async function airtableFetch(
 // silently doesn't show up. The base schema is authoritative and complete
 // regardless of data, so prefer it; callers fall back to sampling if the
 // PAT lacks the `schema.bases:read` scope this endpoint requires.
-export async function getAirtableTableFieldNames(
+export async function getAirtableTableSchema(
   config: AirtableClientConfig
-): Promise<string[]> {
+): Promise<AirtableFieldSchema[]> {
   const body = (await airtableFetch(
     `https://api.airtable.com/v0/meta/bases/${config.baseId}/tables`,
     config
@@ -62,7 +75,20 @@ export async function getAirtableTableFieldNames(
 
   const table = (body.tables ?? []).find((t) => t.name === config.tableName);
   if (!table) throw new Error(`Table "${config.tableName}" not found in base schema`);
-  return table.fields.map((field) => field.name);
+
+  return table.fields.map((field) => ({
+    id: field.id,
+    name: field.name,
+    type: field.type,
+    choices: field.options?.choices?.map((choice) => choice.name),
+  }));
+}
+
+export async function getAirtableTableFieldNames(
+  config: AirtableClientConfig
+): Promise<string[]> {
+  const fields = await getAirtableTableSchema(config);
+  return fields.map((field) => field.name);
 }
 
 export async function listAirtableRecords(

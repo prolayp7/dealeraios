@@ -3,10 +3,16 @@ import {
   listAllAirtableRecords,
   createAirtableRecord,
   updateAirtableRecord,
+  getAirtableTableSchema,
   type AirtableClientConfig,
+  type AirtableFieldSchema,
   type AirtableRecord,
 } from "@/lib/airtable-client";
-import { mapAirtableFieldsToVehicle, mapVehicleToAirtableFields } from "@/lib/airtable-field-mapping";
+import {
+  mapAirtableFieldsToVehicle,
+  mapVehicleToAirtableFields,
+  coerceFieldsForAirtableSchema,
+} from "@/lib/airtable-field-mapping";
 import { enrichVehicle } from "@/lib/vehicle-logic";
 import { isImportableVehicle } from "@/lib/import-column-mapper";
 import { errorMessage } from "@/lib/utils";
@@ -114,9 +120,13 @@ async function pushFromVehicle(
   clientConfig: AirtableClientConfig,
   supabase: SupabaseClient,
   vehicle: Vehicle,
-  config: AirtableConfig
+  config: AirtableConfig,
+  fieldSchema: AirtableFieldSchema[]
 ): Promise<void> {
-  const fields = mapVehicleToAirtableFields(vehicle, config.column_mapping);
+  const fields = coerceFieldsForAirtableSchema(
+    mapVehicleToAirtableFields(vehicle, config.column_mapping),
+    fieldSchema
+  );
   await updateAirtableRecord(clientConfig, vehicle.airtable_record_id as string, fields);
 
   const { error } = await supabase
@@ -171,6 +181,11 @@ export async function syncDealershipAirtable(
   const result: SyncResult = { created: 0, updated: 0, pushedToAirtable: 0, linked: 0, errors: [] };
   const clientConfig = toClientConfig(config);
 
+  // Best-effort: a PAT without schema.bases:read just means pushes go out
+  // with whatever raw types mapVehicleToAirtableFields produced (today's
+  // behavior), rather than failing the whole sync.
+  const fieldSchema = await getAirtableTableSchema(clientConfig).catch(() => []);
+
   const airtableRecords = await listAllAirtableRecords(clientConfig);
   const airtableById = new Map(airtableRecords.map((record) => [record.id, record]));
 
@@ -201,7 +216,7 @@ export async function syncDealershipAirtable(
       if (direction === "pull") {
         await pullIntoVehicle(supabase, vehicle, record, config);
       } else {
-        await pushFromVehicle(clientConfig, supabase, vehicle, config);
+        await pushFromVehicle(clientConfig, supabase, vehicle, config, fieldSchema);
       }
       result.updated++;
     } catch (err) {
@@ -285,7 +300,10 @@ export async function syncDealershipAirtable(
   for (const vehicle of unlinkedVehicles) {
     if (newlyLinkedVehicleIds.has(vehicle.id)) continue;
     try {
-      const fields = mapVehicleToAirtableFields(vehicle, config.column_mapping);
+      const fields = coerceFieldsForAirtableSchema(
+        mapVehicleToAirtableFields(vehicle, config.column_mapping),
+        fieldSchema
+      );
       const record = await createAirtableRecord(clientConfig, fields);
       const { error } = await supabase
         .from("vehicles")

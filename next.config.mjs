@@ -6,6 +6,10 @@ const nextConfig = {
         protocol: "https",
         hostname: "*.airtableusercontent.com",
       },
+      {
+        protocol: "https",
+        hostname: "*.supabase.co",
+      },
     ],
   },
   serverExternalPackages: [
