@@ -304,38 +304,39 @@ export function AirtableBaseExplorer({ isAdmin }: { isAdmin: boolean }) {
       {error && <p className="text-sm text-red-400">{error}</p>}
 
       {selectedTable && (
-        <div className="max-h-[70vh] overflow-auto rounded-md border border-slate-800">
-          <Table className="border-separate border-spacing-0">
-            <TableHeader>
-              <TableRow>
+        <Table
+          className="border-separate border-spacing-0"
+          containerClassName="max-h-[70vh] rounded-md border border-slate-800"
+        >
+          <TableHeader>
+            <TableRow>
+              {selectedTable.fields.map((field) => (
+                <TableHead
+                  key={field.id}
+                  className="sticky top-0 z-10 border-b border-slate-800 bg-[#0b0e14]"
+                >
+                  {field.name}
+                </TableHead>
+              ))}
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {records.map((record) => (
+              <TableRow key={record.id}>
                 {selectedTable.fields.map((field) => (
-                  <TableHead
-                    key={field.id}
-                    className="sticky top-0 z-10 border-b border-slate-800 bg-[#0b0e14]"
-                  >
-                    {field.name}
-                  </TableHead>
+                  <TableCell key={field.id} className="align-top">
+                    <AirtableCellEditor
+                      field={field}
+                      value={record.fields[field.name]}
+                      error={cellErrors[cellKey(record.id, field.name)]}
+                      onChange={(value, previous) => saveCell(record.id, field.name, value, previous)}
+                    />
+                  </TableCell>
                 ))}
               </TableRow>
-            </TableHeader>
-            <TableBody>
-              {records.map((record) => (
-                <TableRow key={record.id}>
-                  {selectedTable.fields.map((field) => (
-                    <TableCell key={field.id} className="align-top">
-                      <AirtableCellEditor
-                        field={field}
-                        value={record.fields[field.name]}
-                        error={cellErrors[cellKey(record.id, field.name)]}
-                        onChange={(value, previous) => saveCell(record.id, field.name, value, previous)}
-                      />
-                    </TableCell>
-                  ))}
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </div>
+            ))}
+          </TableBody>
+        </Table>
       )}
 
       {nextOffset && (
