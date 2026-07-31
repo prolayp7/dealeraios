@@ -304,12 +304,17 @@ export function AirtableBaseExplorer({ isAdmin }: { isAdmin: boolean }) {
       {error && <p className="text-sm text-red-400">{error}</p>}
 
       {selectedTable && (
-        <div className="rounded-md border border-slate-800">
+        <div className="max-h-[70vh] overflow-auto rounded-md border border-slate-800">
           <Table>
             <TableHeader>
               <TableRow>
                 {selectedTable.fields.map((field) => (
-                  <TableHead key={field.id}>{field.name}</TableHead>
+                  <TableHead
+                    key={field.id}
+                    className="sticky top-0 z-10 border-b border-slate-800 bg-[#0b0e14]"
+                  >
+                    {field.name}
+                  </TableHead>
                 ))}
               </TableRow>
             </TableHeader>
