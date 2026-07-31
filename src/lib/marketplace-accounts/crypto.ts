@@ -18,10 +18,11 @@ function getKey(): Buffer {
   return key;
 }
 
-export function encryptSecret(plaintext: string): string {
+export function encryptSecret(plaintext: string, context: string): string {
   const key = getKey();
   const iv = randomBytes(IV_LENGTH);
   const cipher = createCipheriv(ALGORITHM, key, iv);
+  cipher.setAAD(Buffer.from(context, "utf8"));
   const ciphertext = Buffer.concat([
     cipher.update(plaintext, "utf8"),
     cipher.final(),
@@ -30,7 +31,7 @@ export function encryptSecret(plaintext: string): string {
   return `${iv.toString("base64")}:${authTag.toString("base64")}:${ciphertext.toString("base64")}`;
 }
 
-export function decryptSecret(stored: string): string {
+export function decryptSecret(stored: string, context: string): string {
   const key = getKey();
   const parts = stored.split(":");
   if (parts.length !== 3) {
@@ -44,6 +45,7 @@ export function decryptSecret(stored: string): string {
   const ciphertext = Buffer.from(ciphertextB64, "base64");
 
   const decipher = createDecipheriv(ALGORITHM, key, iv);
+  decipher.setAAD(Buffer.from(context, "utf8"));
   decipher.setAuthTag(authTag);
   const plaintext = Buffer.concat([
     decipher.update(ciphertext),
