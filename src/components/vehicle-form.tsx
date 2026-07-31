@@ -33,6 +33,10 @@ const emptyForm: VehicleFormData = {
   status: "In Stock",
   bought_date: new Date().toISOString().split("T")[0],
   notes: "",
+  color: "",
+  code: "",
+  lot_location: "",
+  sold_date: null,
   image_url: null,
   image_urls: [],
 };
@@ -221,6 +225,42 @@ export function VehicleForm({
             id="status"
             value={form.status ?? ""}
             onChange={(e) => update("status", e.target.value)}
+          />
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <div>
+          <Label htmlFor="color">Color</Label>
+          <Input
+            id="color"
+            value={form.color ?? ""}
+            onChange={(e) => update("color", e.target.value)}
+          />
+        </div>
+        <div>
+          <Label htmlFor="code">Code</Label>
+          <Input
+            id="code"
+            value={form.code ?? ""}
+            onChange={(e) => update("code", e.target.value)}
+          />
+        </div>
+        <div>
+          <Label htmlFor="lot_location">Location (Lot)</Label>
+          <Input
+            id="lot_location"
+            value={form.lot_location ?? ""}
+            onChange={(e) => update("lot_location", e.target.value)}
+          />
+        </div>
+        <div>
+          <Label htmlFor="sold_date">Sold Date</Label>
+          <Input
+            id="sold_date"
+            type="date"
+            value={form.sold_date ?? ""}
+            onChange={(e) => update("sold_date", e.target.value || null)}
           />
         </div>
       </div>
