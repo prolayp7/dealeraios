@@ -33,9 +33,22 @@ interface AirtableTableSchema {
   }[];
 }
 
-async function airtableFetch(
+// Carries the HTTP status alongside the message so callers that need to
+// branch on it (403 missing scope, 422 bad value, 404 stale reference, 429
+// rate limit) don't have to re-parse it out of a plain Error's text.
+export class AirtableApiError extends Error {
+  status: number;
+
+  constructor(message: string, status: number) {
+    super(message);
+    this.name = "AirtableApiError";
+    this.status = status;
+  }
+}
+
+export async function airtableFetch(
   url: string,
-  config: AirtableClientConfig,
+  config: Pick<AirtableClientConfig, "personalAccessToken">,
   init?: RequestInit
 ): Promise<unknown> {
   const response = await fetch(url, {
@@ -52,7 +65,7 @@ async function airtableFetch(
     const message =
       (body as { error?: { message?: string } })?.error?.message ??
       `Airtable request failed with status ${response.status}`;
-    throw new Error(message);
+    throw new AirtableApiError(message, response.status);
   }
 
   const body = await response.json();

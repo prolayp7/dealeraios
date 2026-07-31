@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { LISTING_TEMPLATES } from "@/lib/listing-templates";
 import { DEFAULT_AIRTABLE_CONFIG } from "@/lib/airtable-config";
 import { AirtableIntegrationPanel } from "@/components/airtable-integration-panel";
+import { AirtableBaseExplorer } from "@/components/airtable-base-explorer";
 import type { DealershipSettings, MarketplaceAccount } from "@/lib/types";
 
 interface Profile {
@@ -90,9 +91,15 @@ export default function SettingsPage() {
       .finally(() => setLoading(false));
   }, []);
 
+  const [isAdmin, setIsAdmin] = useState(false);
+
   useEffect(() => {
     loadUsers();
     loadSettings();
+    fetch("/api/auth/me")
+      .then((res) => res.json())
+      .then((data) => setIsAdmin(data.role === "admin"))
+      .catch(() => setIsAdmin(false));
   }, [loadUsers, loadSettings]);
 
   async function handleInvite(event: FormEvent) {
@@ -335,17 +342,32 @@ export default function SettingsPage() {
       )}
 
       {activeTab === "Integrations" && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Integrations</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <AirtableIntegrationPanel
-              config={settings?.airtable_config ?? DEFAULT_AIRTABLE_CONFIG}
-              onConfigSaved={loadSettings}
-            />
-          </CardContent>
-        </Card>
+        <>
+          <Card>
+            <CardHeader>
+              <CardTitle>Integrations</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <AirtableIntegrationPanel
+                config={settings?.airtable_config ?? DEFAULT_AIRTABLE_CONFIG}
+                onConfigSaved={loadSettings}
+              />
+            </CardContent>
+          </Card>
+
+          <Card className="mt-6">
+            <CardHeader>
+              <CardTitle>Airtable Base Explorer</CardTitle>
+              <p className="text-sm text-slate-500">
+                Browse any table in your connected Airtable base, edit records inline, and
+                {isAdmin ? " add new fields." : " (admins can also add new fields here)."}
+              </p>
+            </CardHeader>
+            <CardContent>
+              <AirtableBaseExplorer isAdmin={isAdmin} />
+            </CardContent>
+          </Card>
+        </>
       )}
 
       {STUB_TABS.has(activeTab) && (
