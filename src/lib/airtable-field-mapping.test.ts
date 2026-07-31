@@ -128,6 +128,7 @@ describe("coerceFieldsForAirtableSchema", () => {
     { id: "fld2", name: "Make", type: "singleLineText" },
     { id: "fld3", name: "Status", type: "multipleSelects", choices: ["SOLD ", "AVAILABLE"] },
     { id: "fld4", name: "Days in stock", type: "formula" },
+    { id: "fld5", name: "Mileage", type: "singleLineText" },
   ];
 
   test("converts a true boolean into a single-item choice array for multipleSelects", () => {
@@ -166,5 +167,15 @@ describe("coerceFieldsForAirtableSchema", () => {
       schema
     );
     expect(result).toEqual({ Make: "Toyota" });
+  });
+
+  test("stringifies a number pushed at a text-type Airtable column", () => {
+    const result = coerceFieldsForAirtableSchema({ Mileage: 195000 }, schema);
+    expect(result).toEqual({ Mileage: "195000" });
+  });
+
+  test("stringifies a boolean pushed at a text-type Airtable column", () => {
+    const result = coerceFieldsForAirtableSchema({ Mileage: true }, schema);
+    expect(result).toEqual({ Mileage: "true" });
   });
 });

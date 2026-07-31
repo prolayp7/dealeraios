@@ -150,6 +150,19 @@ const AIRTABLE_READONLY_FIELD_TYPES = new Set([
   "multipleLookupValues",
 ]);
 
+// Airtable's text field types want an actual string, not a JSON number or
+// boolean — typecast covers string -> number/select but not this direction,
+// so e.g. this app's numeric "mileage" pushed at a dealer's singleLineText
+// "Mileage" column ("cannot accept the provided value") needs an explicit
+// String() here rather than relying on the API to coerce it.
+const AIRTABLE_TEXT_FIELD_TYPES = new Set([
+  "singleLineText",
+  "multilineText",
+  "email",
+  "url",
+  "phoneNumber",
+]);
+
 // mapVehicleToAirtableFields sends this app's own types (e.g. a plain
 // boolean for listed_online, a plain string for status) verbatim. A dealer
 // is free to map any app field onto any Airtable column regardless of type,
@@ -188,6 +201,15 @@ export function coerceFieldsForAirtableSchema(
 
     if (typeof value === "string" && fieldSchema?.type === "multipleSelects") {
       result[name] = value ? [value] : [];
+      continue;
+    }
+
+    if (
+      (typeof value === "number" || typeof value === "boolean") &&
+      fieldSchema &&
+      AIRTABLE_TEXT_FIELD_TYPES.has(fieldSchema.type)
+    ) {
+      result[name] = String(value);
       continue;
     }
 
