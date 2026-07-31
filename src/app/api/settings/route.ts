@@ -59,7 +59,6 @@ export async function PATCH(request: Request) {
       "company",
       "inactivity_threshold_hours",
       "ai_settings",
-      "marketplace_accounts",
       "airtable_config",
     ];
     const updates: Record<string, unknown> = {};

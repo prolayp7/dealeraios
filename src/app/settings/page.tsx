@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState, type FormEvent } from "react";
-import { Plus, UserPlus, X } from "lucide-react";
+import { UserPlus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -11,7 +11,7 @@ import { LISTING_TEMPLATES } from "@/lib/listing-templates";
 import { DEFAULT_AIRTABLE_CONFIG } from "@/lib/airtable-config";
 import { AirtableIntegrationPanel } from "@/components/airtable-integration-panel";
 import { AirtableBaseExplorer } from "@/components/airtable-base-explorer";
-import type { DealershipSettings, MarketplaceAccount } from "@/lib/types";
+import type { DealershipSettings } from "@/lib/types";
 
 interface Profile {
   id: string;
@@ -63,7 +63,6 @@ export default function SettingsPage() {
   const [companyPhone, setCompanyPhone] = useState("");
   const [inactivityHours, setInactivityHours] = useState(48);
   const [defaultTemplate, setDefaultTemplate] = useState("marketplace");
-  const [newAccountLabel, setNewAccountLabel] = useState("");
 
   const loadUsers = useCallback(() => {
     fetch("/api/auth/invite")
@@ -153,24 +152,6 @@ export default function SettingsPage() {
   const saveAiSettings = (template: string) => {
     setDefaultTemplate(template);
     saveSettings({ ai_settings: { default_listing_template: template } });
-  };
-
-  const addMarketplaceAccount = () => {
-    if (!newAccountLabel.trim() || !settings) return;
-    const account: MarketplaceAccount = {
-      id: crypto.randomUUID(),
-      platform: "facebook",
-      label: newAccountLabel.trim(),
-    };
-    const next = [...(settings.marketplace_accounts ?? []), account];
-    setNewAccountLabel("");
-    saveSettings({ marketplace_accounts: next });
-  };
-
-  const removeMarketplaceAccount = (id: string) => {
-    if (!settings) return;
-    const next = (settings.marketplace_accounts ?? []).filter((a) => a.id !== id);
-    saveSettings({ marketplace_accounts: next });
   };
 
   return (
@@ -268,33 +249,8 @@ export default function SettingsPage() {
           <CardHeader>
             <CardTitle>Marketplace Accounts</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <p className="text-sm text-slate-400">
-              Add unlimited Facebook accounts. One server posts to each sequentially.
-            </p>
-            <div className="flex gap-2">
-              <Input
-                placeholder="e.g. 23 Motorsports — Main"
-                value={newAccountLabel}
-                onChange={(e) => setNewAccountLabel(e.target.value)}
-              />
-              <Button onClick={addMarketplaceAccount} disabled={saving}>
-                <Plus className="h-4 w-4" /> Add Account
-              </Button>
-            </div>
-            <div className="divide-y divide-slate-800">
-              {(settings?.marketplace_accounts ?? []).length === 0 && (
-                <p className="py-3 text-sm text-slate-500">No accounts added yet.</p>
-              )}
-              {(settings?.marketplace_accounts ?? []).map((account) => (
-                <div key={account.id} className="flex items-center justify-between py-2">
-                  <span className="text-sm text-slate-200">{account.label}</span>
-                  <button onClick={() => removeMarketplaceAccount(account.id)}>
-                    <X className="h-4 w-4 text-slate-500 hover:text-red-400" />
-                  </button>
-                </div>
-              ))}
-            </div>
+          <CardContent>
+            <p className="text-sm text-slate-500">Rebuilding — see Task 11.</p>
           </CardContent>
         </Card>
       )}

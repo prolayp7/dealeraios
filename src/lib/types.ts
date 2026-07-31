@@ -213,12 +213,6 @@ export interface AcquisitionOpportunity {
   created_at: string;
 }
 
-export interface MarketplaceAccount {
-  id: string;
-  platform: string;
-  label: string;
-}
-
 export interface AirtableConfig {
   enabled: boolean;
   personal_access_token: string;
@@ -235,7 +229,6 @@ export interface DealershipSettings {
   company: { name?: string; address?: string; phone?: string };
   inactivity_threshold_hours: number;
   ai_settings: { default_listing_template?: string };
-  marketplace_accounts: MarketplaceAccount[];
   airtable_config: AirtableConfig;
   updated_at: string;
 }
