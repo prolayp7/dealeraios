@@ -2,7 +2,7 @@ import type { Cookie, Page } from "playwright-core";
 import { loadFbCookies, saveFbCookies } from "./cookies";
 import { ScraperError } from "./types";
 
-type BrowserExtensionCookie = {
+export type BrowserExtensionCookie = {
   name: string;
   value: string;
   domain: string;
@@ -13,7 +13,7 @@ type BrowserExtensionCookie = {
   sameSite?: string;
 };
 
-function mapExtensionCookies(cookies: BrowserExtensionCookie[]): Cookie[] {
+export function mapExtensionCookies(cookies: BrowserExtensionCookie[]): Cookie[] {
   return cookies.map((c) => ({
     name: c.name,
     value: c.value,
@@ -131,8 +131,8 @@ export async function applyCookies(page: Page, cookies: Cookie[]): Promise<void>
   await page.context().addCookies(cookies);
 }
 
-export async function injectCookies(page: Page): Promise<void> {
-  const cookies = await resolveCookies();
+export async function injectCookies(page: Page, cookies?: Cookie[]): Promise<void> {
+  const resolvedCookies = cookies ?? (await resolveCookies());
 
   await page.goto("https://www.facebook.com", {
     waitUntil: "domcontentloaded",
@@ -141,11 +141,11 @@ export async function injectCookies(page: Page): Promise<void> {
   await page.waitForLoadState("networkidle").catch(() => {});
 
   await page.context().clearCookies();
-  await page.context().addCookies(cookies);
+  await page.context().addCookies(resolvedCookies);
 }
 
-export async function loginToFacebook(page: Page): Promise<void> {
-  await injectCookies(page);
+export async function loginToFacebook(page: Page, cookies?: Cookie[]): Promise<void> {
+  await injectCookies(page, cookies);
 
   await page.goto("https://www.facebook.com/marketplace", {
     waitUntil: "domcontentloaded",
@@ -190,8 +190,8 @@ export async function loginToFacebook(page: Page): Promise<void> {
   );
 }
 
-export async function ensureLoggedIn(page: Page): Promise<void> {
-  await loginToFacebook(page);
+export async function ensureLoggedIn(page: Page, cookies?: Cookie[]): Promise<void> {
+  await loginToFacebook(page, cookies);
   if (await isTwoFactorPage(page)) {
     throw new ScraperError(
       "Facebook requires two-factor authentication. Update FB_COOKIES with a fresh session.",
