@@ -305,7 +305,7 @@ export function AirtableBaseExplorer({ isAdmin }: { isAdmin: boolean }) {
 
       {selectedTable && (
         <div className="max-h-[70vh] overflow-auto rounded-md border border-slate-800">
-          <Table>
+          <Table className="border-separate border-spacing-0">
             <TableHeader>
               <TableRow>
                 {selectedTable.fields.map((field) => (
