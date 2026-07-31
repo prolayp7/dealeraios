@@ -130,6 +130,26 @@ function findChoice(choices: string[], pattern: RegExp): string | undefined {
   return choices.find((choice) => pattern.test(choice.trim()));
 }
 
+// Airtable never accepts a write to these field types regardless of value
+// shape or typecast — they're computed server-side (formula/rollup/count),
+// system-managed (created/modified time or user), or UI-only (button). A
+// dealer mapping this app's own "days_in_stock" (a real, writable column
+// here) onto a same-named Airtable formula column is a totally reasonable
+// thing to do by accident, so drop these silently rather than erroring the
+// whole sync over a field that was never going to sync anyway.
+const AIRTABLE_READONLY_FIELD_TYPES = new Set([
+  "formula",
+  "rollup",
+  "count",
+  "autoNumber",
+  "createdTime",
+  "lastModifiedTime",
+  "createdBy",
+  "lastModifiedBy",
+  "button",
+  "multipleLookupValues",
+]);
+
 // mapVehicleToAirtableFields sends this app's own types (e.g. a plain
 // boolean for listed_online, a plain string for status) verbatim. A dealer
 // is free to map any app field onto any Airtable column regardless of type,
@@ -152,6 +172,10 @@ export function coerceFieldsForAirtableSchema(
 
   for (const [name, value] of Object.entries(fields)) {
     const fieldSchema = schemaByName.get(name);
+
+    if (fieldSchema && AIRTABLE_READONLY_FIELD_TYPES.has(fieldSchema.type)) {
+      continue;
+    }
 
     if (typeof value === "boolean" && fieldSchema?.choices?.length) {
       const truthy = findChoice(fieldSchema.choices, /^(yes|true|y)$/i);

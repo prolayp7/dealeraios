@@ -127,6 +127,7 @@ describe("coerceFieldsForAirtableSchema", () => {
     { id: "fld1", name: "Listed Online", type: "multipleSelects", choices: ["Yes", "NO"] },
     { id: "fld2", name: "Make", type: "singleLineText" },
     { id: "fld3", name: "Status", type: "multipleSelects", choices: ["SOLD ", "AVAILABLE"] },
+    { id: "fld4", name: "Days in stock", type: "formula" },
   ];
 
   test("converts a true boolean into a single-item choice array for multipleSelects", () => {
@@ -157,5 +158,13 @@ describe("coerceFieldsForAirtableSchema", () => {
   test("wraps an empty string into an empty array for multipleSelects instead of an invalid bare string", () => {
     const result = coerceFieldsForAirtableSchema({ Status: "" }, schema);
     expect(result).toEqual({ Status: [] });
+  });
+
+  test("drops fields mapped onto a computed Airtable column instead of erroring the write", () => {
+    const result = coerceFieldsForAirtableSchema(
+      { "Days in stock": 42, Make: "Toyota" },
+      schema
+    );
+    expect(result).toEqual({ Make: "Toyota" });
   });
 });
