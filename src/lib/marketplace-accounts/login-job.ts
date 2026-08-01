@@ -69,6 +69,12 @@ export async function runLoginJob(
 
     await injectCookies(page, cookies);
 
+    await page.goto("https://www.facebook.com/marketplace", {
+      waitUntil: "domcontentloaded",
+      timeout: 60000,
+    });
+    await page.waitForLoadState("networkidle").catch(() => {});
+
     if (await isLoggedIn(page)) {
       const freshCookies = await exportCookies(page);
       await supabase
