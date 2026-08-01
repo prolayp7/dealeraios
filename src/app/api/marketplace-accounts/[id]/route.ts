@@ -35,13 +35,18 @@ export async function PATCH(request: Request, props: { params: Promise<{ id: str
       updates.status = "pending";
     }
 
-    const { error: updateError } = await supabase
+    const { data: updated, error: updateError } = await supabase
       .from("marketplace_accounts")
       .update(updates)
       .eq("id", params.id)
-      .eq("dealership_id", session.dealershipId);
+      .eq("dealership_id", session.dealershipId)
+      .select("id")
+      .maybeSingle();
 
     if (updateError) throw updateError;
+    if (!updated) {
+      return NextResponse.json({ error: "Account not found" }, { status: 404 });
+    }
 
     if (cookies !== undefined) {
       try {
