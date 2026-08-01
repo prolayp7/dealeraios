@@ -238,6 +238,75 @@ export async function getMultiloginConfig(): Promise<MultiloginConfig> {
   return { apiToken, folderId, profileId };
 }
 
+export async function createMultiloginProfile(
+  folderId: string,
+  label: string
+): Promise<string> {
+  const apiToken = await signInToMultilogin();
+
+  const response = await fetch(`${MLX_API}/profile/create`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${apiToken}`,
+      "Content-Type": "application/json",
+      Accept: "application/json",
+    },
+    body: JSON.stringify({
+      folder_id: folderId,
+      name: label,
+      browser_type: "mimic",
+      os_type: "windows",
+    }),
+  });
+
+  const body = await response.json().catch(() => ({}));
+
+  if (!response.ok) {
+    throw new ScraperError(
+      `Multilogin profile creation failed: ${JSON.stringify(body)}`,
+      "MULTILOGIN"
+    );
+  }
+
+  const profileId = body?.data?.id ?? body?.id ?? body?.data?.profile_id;
+  if (!profileId || typeof profileId !== "string") {
+    throw new ScraperError(
+      "Multilogin profile creation did not return a profile id",
+      "MULTILOGIN"
+    );
+  }
+
+  return profileId;
+}
+
+export async function deleteMultiloginProfile(profileId: string): Promise<void> {
+  const apiToken = await signInToMultilogin();
+
+  const response = await fetch(`${MLX_API}/profile/remove?ids=${profileId}`, {
+    method: "DELETE",
+    headers: {
+      Authorization: `Bearer ${apiToken}`,
+      Accept: "application/json",
+    },
+  });
+
+  if (!response.ok) {
+    const body = await response.json().catch(() => ({}));
+    throw new ScraperError(
+      `Multilogin profile deletion failed: ${JSON.stringify(body)}`,
+      "MULTILOGIN"
+    );
+  }
+}
+
+export async function getMultiloginConfigForProfile(
+  profileId: string,
+  folderId: string
+): Promise<MultiloginConfig> {
+  const apiToken = await signInToMultilogin();
+  return { apiToken, folderId, profileId };
+}
+
 type ActiveProfileEntry = {
   profile_id?: string;
   id?: string;
