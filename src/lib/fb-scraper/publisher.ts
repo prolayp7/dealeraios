@@ -1,7 +1,7 @@
 import { promises as fs } from "fs";
 import os from "os";
 import path from "path";
-import type { Browser, Page } from "playwright-core";
+import type { Browser, Cookie, Page } from "playwright-core";
 import { ensureLoggedIn, isBlockedPage, isTwoFactorPage } from "./fb-auth";
 import {
   fieldDelay,
@@ -154,14 +154,15 @@ async function extractListingUrl(page: Page): Promise<string | null> {
 
 async function publishListingOnPage(
   page: Page,
-  params: PublishParams
+  params: PublishParams,
+  cookies?: Cookie[]
 ): Promise<string> {
   await page.setViewportSize({
     width: 1366 + Math.floor(Math.random() * 200),
     height: 768 + Math.floor(Math.random() * 100),
   });
 
-  await ensureLoggedIn(page);
+  await ensureLoggedIn(page, cookies);
 
   await page.goto("https://www.facebook.com/marketplace/create/vehicle", {
     waitUntil: "domcontentloaded",
@@ -274,9 +275,30 @@ async function publishListingOnPage(
 }
 
 export async function publishToFacebookMarketplace(
-  params: PublishParams
+  params: PublishParams,
+  dealershipId: string
 ): Promise<{ listingUrl: string; photosUploaded: number }> {
-  const config = await getMultiloginConfig();
+  const { createServerClient } = await import("@/lib/supabase/server");
+  const { getNextActiveAccount, markAccountUsed } = await import(
+    "@/lib/marketplace-accounts/rotation"
+  );
+  const { getMultiloginConfigForProfile } = await import("./multilogin");
+
+  const supabase = await createServerClient();
+
+  let account: Awaited<ReturnType<typeof getNextActiveAccount>> = null;
+  let config: Awaited<ReturnType<typeof getMultiloginConfig>>;
+  try {
+    account = await getNextActiveAccount(supabase, dealershipId);
+    config = account
+      ? await getMultiloginConfigForProfile(account.multiloginProfileId, account.multiloginFolderId)
+      : await getMultiloginConfig();
+  } catch (error) {
+    console.error("Marketplace account rotation failed, falling back to env-var config:", error);
+    account = null;
+    config = await getMultiloginConfig();
+  }
+
   let browser: Browser | null = null;
 
   try {
@@ -290,7 +312,13 @@ export async function publishToFacebookMarketplace(
     }
 
     const page = context.pages()[0] ?? (await context.newPage());
-    const listingUrl = await publishListingOnPage(page, params);
+    const listingUrl = await publishListingOnPage(page, params, account?.cookies);
+
+    if (account) {
+      await markAccountUsed(supabase, account.id).catch((err) =>
+        console.error("Failed to record marketplace account usage (non-fatal):", err)
+      );
+    }
 
     return {
       listingUrl,

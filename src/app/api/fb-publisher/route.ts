@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase/server";
+import { getSessionDealership } from "@/lib/supabase/session";
 import { ScraperError } from "@/lib/fb-scraper/types";
 
 export const runtime = "nodejs";
@@ -17,6 +18,10 @@ interface PublishRequestBody {
 
 export async function POST(request: Request) {
   const supabase = await createServerClient();
+  const session = await getSessionDealership(supabase);
+  if (!session) {
+    return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
+  }
   let vehicleId: string | undefined;
 
   try {
@@ -61,7 +66,7 @@ export async function POST(request: Request) {
       make: vehicle.make,
       model: vehicle.model,
       mileage: vehicle.mileage,
-    });
+    }, session.dealershipId);
 
     const primaryPhoto = Array.isArray(body.photos)
       ? body.photos.find((url) => typeof url === "string" && url.trim())
