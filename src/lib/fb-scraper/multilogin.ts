@@ -271,7 +271,7 @@ export async function createMultiloginProfile(
   const profileId = body?.data?.id ?? body?.id ?? body?.data?.profile_id;
   if (!profileId || typeof profileId !== "string") {
     throw new ScraperError(
-      "Multilogin profile creation did not return a profile id",
+      `Multilogin profile creation did not return a profile id. Raw response: ${JSON.stringify(body)}`,
       "MULTILOGIN"
     );
   }
