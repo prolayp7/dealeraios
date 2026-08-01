@@ -1,4 +1,4 @@
-import type { Browser, BrowserContext, Page } from "playwright-core";
+import type { Browser, BrowserContext, Cookie, Page } from "playwright-core";
 import { ensureLoggedIn, isBlockedPage } from "./fb-auth";
 import {
   humanScroll,
@@ -69,8 +69,8 @@ async function logListingSelectorCounts(page: Page): Promise<void> {
   }
 }
 
-async function loginToFacebook(page: Page): Promise<void> {
-  await ensureLoggedIn(page);
+async function loginToFacebook(page: Page, cookies?: Cookie[]): Promise<void> {
+  await ensureLoggedIn(page, cookies);
 }
 
 async function setMarketplaceLocation(
@@ -620,14 +620,15 @@ async function runMarketplaceSearch(
 async function scrapeWithPage(
   page: Page,
   params: FbSearchParams,
-  isRetry: boolean
+  isRetry: boolean,
+  cookies?: Cookie[]
 ): Promise<FbSearchResult> {
   await page.setViewportSize({
     width: 1366 + Math.floor(Math.random() * 200),
     height: 768 + Math.floor(Math.random() * 100),
   });
 
-  await loginToFacebook(page);
+  await loginToFacebook(page, cookies);
 
   console.log("Staying on marketplace page, searching in-page...");
   console.log("Current URL:", page.url());
@@ -638,7 +639,7 @@ async function scrapeWithPage(
     if (!isRetry) {
       console.warn("Blocked on marketplace, waiting and retrying once...");
       await randomDelay(5000, 8000);
-      return scrapeWithPage(page, params, true);
+      return scrapeWithPage(page, params, true, cookies);
     }
     throw new ScraperError(
       "Facebook blocked marketplace access. Wait and try again.",
@@ -676,9 +677,22 @@ async function getBrowserContext(browser: Browser): Promise<{
 }
 
 export async function scrapeFacebookMarketplace(
-  params: FbSearchParams
+  params: FbSearchParams,
+  dealershipId: string
 ): Promise<FbSearchResult> {
-  const config = await getMultiloginConfig();
+  const { createServerClient } = await import("@/lib/supabase/server");
+  const { getNextActiveAccount, markAccountUsed } = await import(
+    "@/lib/marketplace-accounts/rotation"
+  );
+  const { getMultiloginConfigForProfile } = await import("./multilogin");
+
+  const supabase = await createServerClient();
+  const account = await getNextActiveAccount(supabase, dealershipId);
+
+  const config = account
+    ? await getMultiloginConfigForProfile(account.multiloginProfileId, account.multiloginFolderId)
+    : await getMultiloginConfig();
+
   let browser: Browser | null = null;
 
   try {
@@ -688,7 +702,11 @@ export async function scrapeFacebookMarketplace(
     browser = await connectMultiloginBrowser(session);
 
     const { page } = await getBrowserContext(browser);
-    const searchResult = await scrapeWithPage(page, params, false);
+    const searchResult = await scrapeWithPage(page, params, false, account?.cookies);
+
+    if (account) {
+      await markAccountUsed(supabase, account.id);
+    }
 
     console.log(
       `FB scraper: found ${searchResult.results.length} listings (batch ${params.resultBatch}, skipped ${searchResult.skipCount}) for ${params.make} ${params.model}`

@@ -21,7 +21,7 @@ export const facebookSource: MarketSource = {
         yearTo: params.year ?? 0,
       });
 
-      const result = await scrapeFacebookMarketplace(searchParams);
+      const result = await scrapeFacebookMarketplace(searchParams, params.dealershipId);
 
       return {
         status: "connected",

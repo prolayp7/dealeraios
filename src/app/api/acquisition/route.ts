@@ -40,7 +40,11 @@ export async function POST(request: Request) {
 
     const sourceResults = await Promise.all(
       MARKET_SOURCES.map(async (source) => {
-        const result = await source.search({ make: make ?? "", model: model ?? "" });
+        const result = await source.search({
+          make: make ?? "",
+          model: model ?? "",
+          dealershipId: session.dealershipId,
+        });
         return { source, result };
       })
     );

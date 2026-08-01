@@ -13,6 +13,7 @@ export interface MarketSourceSearchParams {
   make: string;
   model: string;
   year?: number | null;
+  dealershipId: string;
 }
 
 export type MarketSourceStatus = "connected" | "not_connected";

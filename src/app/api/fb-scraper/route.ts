@@ -1,4 +1,6 @@
 import { NextResponse } from "next/server";
+import { createServerClient } from "@/lib/supabase/server";
+import { getSessionDealership } from "@/lib/supabase/session";
 import { ScraperError } from "@/lib/fb-scraper/types";
 
 export const runtime = "nodejs";
@@ -6,6 +8,12 @@ export const maxDuration = 300;
 
 export async function POST(request: Request) {
   try {
+    const supabase = await createServerClient();
+    const session = await getSessionDealership(supabase);
+    if (!session) {
+      return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
+    }
+
     const body = await request.json();
     const { parseSearchParams, scrapeFacebookMarketplace } = await import(
       "@/lib/fb-scraper/scraper"
@@ -19,7 +27,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const searchResult = await scrapeFacebookMarketplace(params);
+    const searchResult = await scrapeFacebookMarketplace(params, session.dealershipId);
 
     return NextResponse.json({
       count: searchResult.results.length,

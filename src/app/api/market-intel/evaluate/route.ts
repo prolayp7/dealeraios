@@ -35,6 +35,7 @@ export async function POST(request: Request) {
           make: vehicle.make ?? "",
           model: vehicle.model ?? "",
           year: vehicle.year,
+          dealershipId: session.dealershipId,
         });
         return { source, result };
       })
