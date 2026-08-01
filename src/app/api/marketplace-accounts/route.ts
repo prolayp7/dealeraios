@@ -7,7 +7,7 @@ import { encryptSecret } from "@/lib/marketplace-accounts/crypto";
 import { runLoginJob } from "@/lib/marketplace-accounts/login-job";
 import { toSafeAccount, type MarketplaceAccountRow } from "@/lib/marketplace-accounts/types";
 import { validateCreateAccountBody } from "@/lib/marketplace-accounts/validation";
-import { createMultiloginProfile } from "@/lib/fb-scraper/multilogin";
+import { createMultiloginProfile, deleteMultiloginProfile } from "@/lib/fb-scraper/multilogin";
 import { ScraperError } from "@/lib/fb-scraper/types";
 
 export const runtime = "nodejs";
@@ -69,24 +69,44 @@ export async function POST(request: Request) {
     // Postgres insert pattern and overrides the DEFAULT cleanly.
     const accountId = randomUUID();
 
-    const { data: inserted, error: insertError } = await supabase
-      .from("marketplace_accounts")
-      .insert({
-        id: accountId,
-        dealership_id: session.dealershipId,
-        label,
-        auth_method: "cookies",
-        encrypted_cookies: encryptSecret(JSON.stringify(cookies), accountId),
-        multilogin_profile_id: profileId,
-        multilogin_folder_id: folderId,
-        status: "pending",
-      })
-      .select()
-      .single();
+    let inserted: { id: string };
+    try {
+      const { data, error: insertError } = await supabase
+        .from("marketplace_accounts")
+        .insert({
+          id: accountId,
+          dealership_id: session.dealershipId,
+          label,
+          auth_method: "cookies",
+          encrypted_cookies: encryptSecret(JSON.stringify(cookies), accountId),
+          multilogin_profile_id: profileId,
+          multilogin_folder_id: folderId,
+          status: "pending",
+        })
+        .select()
+        .single();
 
-    if (insertError) throw insertError;
+      if (insertError) throw insertError;
+      inserted = data;
+    } catch (err) {
+      await deleteMultiloginProfile(profileId).catch((cleanupErr) =>
+        console.error("Failed to clean up orphaned Multilogin profile:", cleanupErr)
+      );
+      throw err;
+    }
 
-    await runLoginJob(supabase, inserted.id);
+    try {
+      await runLoginJob(supabase, inserted.id);
+    } catch (err) {
+      await supabase
+        .from("marketplace_accounts")
+        .update({
+          status: "error",
+          status_message: err instanceof Error ? err.message : "Login attempt failed unexpectedly",
+        })
+        .eq("id", inserted.id);
+      throw err;
+    }
 
     const { data: final, error: finalError } = await supabase
       .from("marketplace_accounts")
