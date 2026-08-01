@@ -49,6 +49,7 @@ export function MarketplaceAccountsPanel() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [label, setLabel] = useState("");
   const [cookiesJson, setCookiesJson] = useState("");
+  const [multiloginProfileId, setMultiloginProfileId] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [retryingId, setRetryingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -70,6 +71,7 @@ export function MarketplaceAccountsPanel() {
     setEditingId(null);
     setLabel("");
     setCookiesJson("");
+    setMultiloginProfileId("");
   };
 
   const startEdit = (account: SafeMarketplaceAccount) => {
@@ -94,7 +96,11 @@ export function MarketplaceAccountsPanel() {
       const res = await fetch("/api/marketplace-accounts", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ label, cookies }),
+        body: JSON.stringify({
+          label,
+          cookies,
+          ...(multiloginProfileId.trim() ? { multiloginProfileId: multiloginProfileId.trim() } : {}),
+        }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to add account");
@@ -198,6 +204,19 @@ export function MarketplaceAccountsPanel() {
             rows={4}
           />
         </div>
+        {!editingId && (
+          <div>
+            <Label htmlFor="account-profile-id">
+              Existing Multilogin Profile ID (optional)
+            </Label>
+            <Input
+              id="account-profile-id"
+              placeholder="Leave blank to auto-create — or paste an ID from a profile you made in the Multilogin app"
+              value={multiloginProfileId}
+              onChange={(e) => setMultiloginProfileId(e.target.value)}
+            />
+          </div>
+        )}
         {error && <p className="text-sm text-red-400">{error}</p>}
         <div className="flex gap-2">
           {editingId ? (

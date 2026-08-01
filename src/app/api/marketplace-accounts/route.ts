@@ -50,7 +50,7 @@ export async function POST(request: Request) {
     if (!validation.ok) {
       return NextResponse.json({ error: validation.error }, { status: 400 });
     }
-    const { label, cookies } = validation.value;
+    const { label, cookies, multiloginProfileId } = validation.value;
 
     const folderId = process.env.MULTILOGIN_FOLDER_ID;
     if (!folderId) {
@@ -64,7 +64,14 @@ export async function POST(request: Request) {
       "@/lib/fb-scraper/multilogin"
     );
     const { runLoginJob } = await import("@/lib/marketplace-accounts/login-job");
-    const profileId = await createMultiloginProfile(folderId, label);
+
+    // Escape hatch: if the caller already created a profile by hand (e.g. via
+    // the Multilogin desktop app, when the cloud create-profile API is down),
+    // use it directly and skip our own create call — and skip deleting it on
+    // failure too, since we didn't create it and shouldn't destroy something
+    // the operator explicitly set up.
+    const weCreatedProfile = !multiloginProfileId;
+    const profileId = multiloginProfileId ?? (await createMultiloginProfile(folderId, label));
 
     // Generated here (rather than left to the table's DEFAULT) because
     // encryptSecret's AAD context must be the row's id, and that id has to
@@ -92,9 +99,11 @@ export async function POST(request: Request) {
       if (insertError) throw insertError;
       inserted = data;
     } catch (err) {
-      await deleteMultiloginProfile(profileId).catch((cleanupErr) =>
-        console.error("Failed to clean up orphaned Multilogin profile:", cleanupErr)
-      );
+      if (weCreatedProfile) {
+        await deleteMultiloginProfile(profileId).catch((cleanupErr) =>
+          console.error("Failed to clean up orphaned Multilogin profile:", cleanupErr)
+        );
+      }
       throw err;
     }
 

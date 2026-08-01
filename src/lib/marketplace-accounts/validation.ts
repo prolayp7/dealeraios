@@ -40,7 +40,11 @@ function validateCookiesField(value: unknown): ValidationResult<BrowserExtension
 
 export function validateCreateAccountBody(
   body: unknown
-): ValidationResult<{ label: string; cookies: BrowserExtensionCookie[] }> {
+): ValidationResult<{
+  label: string;
+  cookies: BrowserExtensionCookie[];
+  multiloginProfileId?: string;
+}> {
   if (!isPlainObject(body)) {
     return { ok: false, error: "label is required" };
   }
@@ -53,10 +57,22 @@ export function validateCreateAccountBody(
   const cookiesResult = validateCookiesField(body.cookies);
   if (!cookiesResult.ok) return cookiesResult;
 
-  return {
-    ok: true,
-    value: { label: rawLabel.trim(), cookies: cookiesResult.value },
+  const value: { label: string; cookies: BrowserExtensionCookie[]; multiloginProfileId?: string } = {
+    label: rawLabel.trim(),
+    cookies: cookiesResult.value,
   };
+
+  // Optional escape hatch: skip Multilogin's (currently unreliable) profile-create
+  // API and attach an existing profile — created by hand in the Multilogin
+  // desktop app — directly instead.
+  if ("multiloginProfileId" in body && body.multiloginProfileId !== undefined && body.multiloginProfileId !== "") {
+    if (typeof body.multiloginProfileId !== "string" || body.multiloginProfileId.trim().length === 0) {
+      return { ok: false, error: "multiloginProfileId must be a non-empty string when provided" };
+    }
+    value.multiloginProfileId = body.multiloginProfileId.trim();
+  }
+
+  return { ok: true, value };
 }
 
 export function validateUpdateAccountBody(
