@@ -314,12 +314,6 @@ export async function publishToFacebookMarketplace(
     const page = context.pages()[0] ?? (await context.newPage());
     const listingUrl = await publishListingOnPage(page, params, account?.cookies);
 
-    if (account) {
-      await markAccountUsed(supabase, account.id).catch((err) =>
-        console.error("Failed to record marketplace account usage (non-fatal):", err)
-      );
-    }
-
     return {
       listingUrl,
       photosUploaded: params.photos.length,
@@ -332,6 +326,11 @@ export async function publishToFacebookMarketplace(
       "PUBLISH"
     );
   } finally {
+    if (account) {
+      await markAccountUsed(supabase, account.id).catch((err) =>
+        console.error("Failed to record marketplace account usage (non-fatal):", err)
+      );
+    }
     if (browser) {
       try {
         await browser.close();

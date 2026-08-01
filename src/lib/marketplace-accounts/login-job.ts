@@ -1,6 +1,6 @@
 // src/lib/marketplace-accounts/login-job.ts
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { Browser } from "playwright-core";
+import type { Browser, Cookie } from "playwright-core";
 import {
   connectMultiloginBrowser,
 } from "../fb-scraper/browser-connect";
@@ -10,7 +10,6 @@ import {
   isBlockedPage,
   isLoggedIn,
   isTwoFactorPage,
-  mapExtensionCookies,
 } from "../fb-scraper/fb-auth";
 import {
   getMultiloginConfigForProfile,
@@ -47,9 +46,7 @@ export async function runLoginJob(
     return;
   }
 
-  const cookies = mapExtensionCookies(
-    JSON.parse(decryptSecret(account.encrypted_cookies, account.id))
-  );
+  const cookies = JSON.parse(decryptSecret(account.encrypted_cookies, account.id)) as Cookie[];
 
   const config = await getMultiloginConfigForProfile(
     account.multilogin_profile_id,

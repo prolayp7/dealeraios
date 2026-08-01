@@ -1,6 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Cookie } from "playwright-core";
-import { mapExtensionCookies } from "../fb-scraper/fb-auth";
 import { decryptSecret } from "./crypto";
 
 export interface RotationAccount {
@@ -47,7 +46,7 @@ export async function getNextActiveAccount(
     return null;
   }
 
-  const cookies = mapExtensionCookies(JSON.parse(decryptSecret(chosen.encrypted_cookies, chosen.id)));
+  const cookies = JSON.parse(decryptSecret(chosen.encrypted_cookies, chosen.id)) as Cookie[];
 
   return {
     id: chosen.id,

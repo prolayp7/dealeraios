@@ -4,11 +4,10 @@ import { NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase/server";
 import { getSessionDealership } from "@/lib/supabase/session";
 import { encryptSecret } from "@/lib/marketplace-accounts/crypto";
-import { runLoginJob } from "@/lib/marketplace-accounts/login-job";
 import { toSafeAccount, type MarketplaceAccountRow } from "@/lib/marketplace-accounts/types";
 import { validateCreateAccountBody } from "@/lib/marketplace-accounts/validation";
-import { createMultiloginProfile, deleteMultiloginProfile } from "@/lib/fb-scraper/multilogin";
 import { ScraperError } from "@/lib/fb-scraper/types";
+import { mapExtensionCookies } from "@/lib/fb-scraper/fb-auth";
 
 export const runtime = "nodejs";
 export const maxDuration = 300;
@@ -61,6 +60,11 @@ export async function POST(request: Request) {
       );
     }
 
+    const { createMultiloginProfile, deleteMultiloginProfile } = await import(
+      "@/lib/fb-scraper/multilogin"
+    );
+    const { runLoginJob } = await import("@/lib/marketplace-accounts/login-job");
+
     const profileId = await createMultiloginProfile(folderId, label);
 
     // Generated here (rather than left to the table's DEFAULT) because
@@ -78,7 +82,7 @@ export async function POST(request: Request) {
           dealership_id: session.dealershipId,
           label,
           auth_method: "cookies",
-          encrypted_cookies: encryptSecret(JSON.stringify(cookies), accountId),
+          encrypted_cookies: encryptSecret(JSON.stringify(mapExtensionCookies(cookies)), accountId),
           multilogin_profile_id: profileId,
           multilogin_folder_id: folderId,
           status: "pending",

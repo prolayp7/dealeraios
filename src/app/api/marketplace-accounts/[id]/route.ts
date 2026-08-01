@@ -3,11 +3,10 @@ import { NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase/server";
 import { getSessionDealership } from "@/lib/supabase/session";
 import { encryptSecret } from "@/lib/marketplace-accounts/crypto";
-import { runLoginJob } from "@/lib/marketplace-accounts/login-job";
 import { toSafeAccount, type MarketplaceAccountRow } from "@/lib/marketplace-accounts/types";
 import { validateUpdateAccountBody } from "@/lib/marketplace-accounts/validation";
-import { deleteMultiloginProfile } from "@/lib/fb-scraper/multilogin";
 import { ScraperError } from "@/lib/fb-scraper/types";
+import { mapExtensionCookies } from "@/lib/fb-scraper/fb-auth";
 
 export const runtime = "nodejs";
 export const maxDuration = 300;
@@ -26,12 +25,14 @@ export async function PATCH(request: Request, props: { params: Promise<{ id: str
     if (!validation.ok) {
       return NextResponse.json({ error: validation.error }, { status: 400 });
     }
+    const { runLoginJob } = await import("@/lib/marketplace-accounts/login-job");
+
     const { label, cookies } = validation.value;
 
     const updates: Record<string, unknown> = {};
     if (label !== undefined) updates.label = label;
     if (cookies !== undefined) {
-      updates.encrypted_cookies = encryptSecret(JSON.stringify(cookies), params.id);
+      updates.encrypted_cookies = encryptSecret(JSON.stringify(mapExtensionCookies(cookies)), params.id);
       updates.status = "pending";
     }
 
@@ -107,6 +108,8 @@ export async function DELETE(_request: Request, props: { params: Promise<{ id: s
     if (fetchError || !existing) {
       return NextResponse.json({ error: "Account not found" }, { status: 404 });
     }
+
+    const { deleteMultiloginProfile } = await import("@/lib/fb-scraper/multilogin");
 
     if (existing.multilogin_profile_id) {
       await deleteMultiloginProfile(existing.multilogin_profile_id).catch((err) =>

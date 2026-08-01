@@ -712,12 +712,6 @@ export async function scrapeFacebookMarketplace(
     const { page } = await getBrowserContext(browser);
     const searchResult = await scrapeWithPage(page, params, false, account?.cookies);
 
-    if (account) {
-      await markAccountUsed(supabase, account.id).catch((err) =>
-        console.error("Failed to record marketplace account usage (non-fatal):", err)
-      );
-    }
-
     console.log(
       `FB scraper: found ${searchResult.results.length} listings (batch ${params.resultBatch}, skipped ${searchResult.skipCount}) for ${params.make} ${params.model}`
     );
@@ -731,6 +725,11 @@ export async function scrapeFacebookMarketplace(
       "SCRAPE"
     );
   } finally {
+    if (account) {
+      await markAccountUsed(supabase, account.id).catch((err) =>
+        console.error("Failed to record marketplace account usage (non-fatal):", err)
+      );
+    }
     if (browser) {
       try {
         await browser.close();

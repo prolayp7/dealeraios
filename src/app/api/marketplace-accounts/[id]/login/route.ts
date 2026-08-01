@@ -2,7 +2,6 @@
 import { NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase/server";
 import { getSessionDealership } from "@/lib/supabase/session";
-import { runLoginJob } from "@/lib/marketplace-accounts/login-job";
 import { toSafeAccount, type MarketplaceAccountRow } from "@/lib/marketplace-accounts/types";
 
 export const runtime = "nodejs";
@@ -27,6 +26,8 @@ export async function POST(_request: Request, props: { params: Promise<{ id: str
     if (fetchError || !existing) {
       return NextResponse.json({ error: "Account not found" }, { status: 404 });
     }
+
+    const { runLoginJob } = await import("@/lib/marketplace-accounts/login-job");
 
     try {
       await runLoginJob(supabase, params.id);
