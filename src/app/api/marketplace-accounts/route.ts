@@ -60,20 +60,11 @@ export async function POST(request: Request) {
       );
     }
 
-    // TEMPORARY: Multilogin's cloud profile-create API is currently
-    // returning an inconsistent/broken response (confirmed via curl outside
-    // this app too — real TLS cert, real Cloudflare, not a local network
-    // issue; looks like an outage on their end). Skipping profile creation
-    // and the login attempt so accounts can still be saved to the DB while
-    // that's down. Revert this block (restore the commented-out code below)
-    // once Multilogin's API is healthy again.
-    //
-    // const { createMultiloginProfile, deleteMultiloginProfile } = await import(
-    //   "@/lib/fb-scraper/multilogin"
-    // );
-    // const { runLoginJob } = await import("@/lib/marketplace-accounts/login-job");
-    // const profileId = await createMultiloginProfile(folderId, label);
-    const profileId: string | null = null;
+    const { createMultiloginProfile, deleteMultiloginProfile } = await import(
+      "@/lib/fb-scraper/multilogin"
+    );
+    const { runLoginJob } = await import("@/lib/marketplace-accounts/login-job");
+    const profileId = await createMultiloginProfile(folderId, label);
 
     // Generated here (rather than left to the table's DEFAULT) because
     // encryptSecret's AAD context must be the row's id, and that id has to
@@ -92,11 +83,8 @@ export async function POST(request: Request) {
           auth_method: "cookies",
           encrypted_cookies: encryptSecret(JSON.stringify(mapExtensionCookies(cookies)), accountId),
           multilogin_profile_id: profileId,
-          multilogin_folder_id: profileId ? folderId : null,
+          multilogin_folder_id: folderId,
           status: "pending",
-          status_message: profileId
-            ? null
-            : "Saved without a Multilogin profile (profile creation temporarily disabled) — retry once Multilogin's API is healthy.",
         })
         .select()
         .single();
@@ -104,28 +92,24 @@ export async function POST(request: Request) {
       if (insertError) throw insertError;
       inserted = data;
     } catch (err) {
-      // if (profileId) {
-      //   await deleteMultiloginProfile(profileId).catch((cleanupErr) =>
-      //     console.error("Failed to clean up orphaned Multilogin profile:", cleanupErr)
-      //   );
-      // }
+      await deleteMultiloginProfile(profileId).catch((cleanupErr) =>
+        console.error("Failed to clean up orphaned Multilogin profile:", cleanupErr)
+      );
       throw err;
     }
 
-    // if (profileId) {
-    //   try {
-    //     await runLoginJob(supabase, inserted.id);
-    //   } catch (err) {
-    //     await supabase
-    //       .from("marketplace_accounts")
-    //       .update({
-    //         status: "error",
-    //         status_message: err instanceof Error ? err.message : "Login attempt failed unexpectedly",
-    //       })
-    //       .eq("id", inserted.id);
-    //     throw err;
-    //   }
-    // }
+    try {
+      await runLoginJob(supabase, inserted.id);
+    } catch (err) {
+      await supabase
+        .from("marketplace_accounts")
+        .update({
+          status: "error",
+          status_message: err instanceof Error ? err.message : "Login attempt failed unexpectedly",
+        })
+        .eq("id", inserted.id);
+      throw err;
+    }
 
     const { data: final, error: finalError } = await supabase
       .from("marketplace_accounts")
