@@ -259,19 +259,27 @@ export async function createMultiloginProfile(
     }),
   });
 
-  const body = await response.json().catch(() => ({}));
+  const rawText = await response.text();
+  let body: Record<string, unknown> = {};
+  try {
+    body = rawText ? JSON.parse(rawText) : {};
+  } catch {
+    // body stays {}; rawText below still carries whatever the server sent
+  }
 
   if (!response.ok) {
     throw new ScraperError(
-      `Multilogin profile creation failed: ${JSON.stringify(body)}`,
+      `Multilogin profile creation failed (HTTP ${response.status}): ${rawText || "(empty body)"}`,
       "MULTILOGIN"
     );
   }
 
-  const profileId = body?.data?.ids?.[0] ?? body?.data?.id ?? body?.id ?? body?.data?.profile_id;
+  const data = body?.data as Record<string, unknown> | undefined;
+  const profileId =
+    (data?.ids as string[] | undefined)?.[0] ?? data?.id ?? body?.id ?? data?.profile_id;
   if (!profileId || typeof profileId !== "string") {
     throw new ScraperError(
-      `Multilogin profile creation did not return a profile id. Raw response: ${JSON.stringify(body)}`,
+      `Multilogin profile creation did not return a profile id (HTTP ${response.status}): ${rawText || "(empty body)"}`,
       "MULTILOGIN"
     );
   }
