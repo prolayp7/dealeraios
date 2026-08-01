@@ -687,11 +687,19 @@ export async function scrapeFacebookMarketplace(
   const { getMultiloginConfigForProfile } = await import("./multilogin");
 
   const supabase = await createServerClient();
-  const account = await getNextActiveAccount(supabase, dealershipId);
 
-  const config = account
-    ? await getMultiloginConfigForProfile(account.multiloginProfileId, account.multiloginFolderId)
-    : await getMultiloginConfig();
+  let account: Awaited<ReturnType<typeof getNextActiveAccount>> = null;
+  let config: Awaited<ReturnType<typeof getMultiloginConfig>>;
+  try {
+    account = await getNextActiveAccount(supabase, dealershipId);
+    config = account
+      ? await getMultiloginConfigForProfile(account.multiloginProfileId, account.multiloginFolderId)
+      : await getMultiloginConfig();
+  } catch (error) {
+    console.error("Marketplace account rotation failed, falling back to env-var config:", error);
+    account = null;
+    config = await getMultiloginConfig();
+  }
 
   let browser: Browser | null = null;
 
@@ -705,7 +713,9 @@ export async function scrapeFacebookMarketplace(
     const searchResult = await scrapeWithPage(page, params, false, account?.cookies);
 
     if (account) {
-      await markAccountUsed(supabase, account.id);
+      await markAccountUsed(supabase, account.id).catch((err) =>
+        console.error("Failed to record marketplace account usage (non-fatal):", err)
+      );
     }
 
     console.log(
