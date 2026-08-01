@@ -11,6 +11,7 @@ import { LISTING_TEMPLATES } from "@/lib/listing-templates";
 import { DEFAULT_AIRTABLE_CONFIG } from "@/lib/airtable-config";
 import { AirtableIntegrationPanel } from "@/components/airtable-integration-panel";
 import { AirtableBaseExplorer } from "@/components/airtable-base-explorer";
+import { MarketplaceAccountsPanel } from "@/components/marketplace-accounts-panel";
 import type { DealershipSettings } from "@/lib/types";
 
 interface Profile {
@@ -250,7 +251,7 @@ export default function SettingsPage() {
             <CardTitle>Marketplace Accounts</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-sm text-slate-500">Rebuilding — see Task 11.</p>
+            <MarketplaceAccountsPanel />
           </CardContent>
         </Card>
       )}
