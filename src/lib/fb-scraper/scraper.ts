@@ -163,7 +163,21 @@ async function setMarketplaceLocation(
       .catch(() => false);
 
     if (suggestionAppeared) {
-      const suggestionText = await suggestion.innerText().catch(() => "");
+      // The dropdown can already be showing a stale/default suggestion (from
+      // focus-time, before Facebook's debounced autocomplete re-queries for
+      // what was just typed) at the exact moment it becomes "visible" — that
+      // race is what previously caused the location filter to silently lock
+      // onto an unrelated city (e.g. picking "Ashburn, Virginia" for a
+      // requested NJ zip). Poll until the option text stops changing before
+      // trusting it, instead of clicking whatever is visible first.
+      let suggestionText = await suggestion.innerText().catch(() => "");
+      for (let i = 0; i < 4; i++) {
+        await randomDelay(300, 500);
+        const nextText = await suggestion.innerText().catch(() => suggestionText);
+        if (nextText === suggestionText) break;
+        suggestionText = nextText;
+      }
+
       await suggestion.click();
       await randomDelay();
       console.log(
@@ -409,6 +423,20 @@ async function extractListings(
 
       return items;
     });
+
+    // A real make/model search on Facebook Marketplace essentially never
+    // returns zero raw item links on the very first pass, even for a narrow
+    // query — it pads with nearby/similar listings. Seeing none here (after
+    // waitForMarketplaceListings already gave the feed up to 15s to render)
+    // is a strong signal the account is being rate-limited/soft-blocked by
+    // Facebook rather than that there are genuinely no matching vehicles —
+    // surface that distinction instead of silently reporting "0 listings".
+    if (scrollAttempts === 0 && batch.length === 0 && (params.make || params.model)) {
+      throw new ScraperError(
+        "Facebook Marketplace returned an empty feed for this search. This usually means the account is temporarily rate-limited or soft-blocked rather than that there are no matching listings — wait a while before retrying, or rotate to a different marketplace account.",
+        "BLOCKED"
+      );
+    }
 
     for (const item of batch) {
       if (seen.has(item.url)) continue;
