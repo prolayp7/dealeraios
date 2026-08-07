@@ -63,6 +63,21 @@ const LISTING_SELECTORS = [
   'a[href*="/marketplace/item/"]',
 ] as const;
 
+// Facebook's marketplace feed is a client-rendered SPA whose render time
+// varies run-to-run (cold profile load, account switch, network jitter) — a
+// fixed sleep either wastes time or, worse, resolves before results have
+// actually rendered, causing extraction to see an empty feed even though the
+// search genuinely has matches. Wait for the real condition instead.
+async function waitForMarketplaceListings(page: Page, timeoutMs = 15000): Promise<void> {
+  await page
+    .waitForSelector('a[href*="/marketplace/item/"]', { timeout: timeoutMs })
+    .catch(() => {
+      console.warn(
+        `No marketplace item links appeared within ${timeoutMs}ms — feed may genuinely be empty`
+      );
+    });
+}
+
 async function logListingSelectorCounts(page: Page): Promise<void> {
   for (const selector of LISTING_SELECTORS) {
     const count = await page.locator(selector).count();
@@ -509,7 +524,7 @@ async function runMarketplaceSearch(
   if (!query) {
     console.log("No search query provided, using current marketplace page");
     await page.waitForLoadState("networkidle").catch(() => {});
-    await page.waitForTimeout(5000);
+    await waitForMarketplaceListings(page);
     await logMarketplaceSearchState(page);
     return;
   }
@@ -555,7 +570,7 @@ async function runMarketplaceSearch(
   await searchInput.fill(query);
   await page.waitForTimeout(1000);
   await page.keyboard.press("Enter");
-  await page.waitForTimeout(5000);
+  await waitForMarketplaceListings(page);
 
   if (page.url().includes("login")) {
     throw new ScraperError(
@@ -601,9 +616,11 @@ async function scrapeWithPage(
 
   // Changing location/radius triggers an async feed refresh — give Facebook
   // time to swap in the new results before scrolling/collecting, otherwise
-  // extraction can capture a mix of stale (pre-change) and fresh listing cards.
+  // extraction can capture a mix of stale (pre-change) and fresh listing
+  // cards, or even an empty feed if it scrapes mid-reload.
   await page.waitForLoadState("networkidle").catch(() => {});
-  await randomDelay(2000, 3000);
+  await waitForMarketplaceListings(page);
+  await randomDelay(500, 1000);
 
   await humanScroll(page, 2);
 
