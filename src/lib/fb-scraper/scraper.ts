@@ -10,6 +10,7 @@ import {
   stopMultiloginProfile,
 } from "./multilogin";
 import { connectMultiloginBrowser } from "./browser-connect";
+import { listingMatchesSearch } from "./listing-match";
 import {
   FbListing,
   FbSearchParams,
@@ -286,65 +287,12 @@ async function applyMarketplaceFilters(
 
     await setMarketplaceLocation(page, params.location, params.radius);
 
-    // Year/mileage filters likely only exist under the Vehicles category's
-    // dedicated filter panel, not the generic keyword-search sidebar — try
-    // switching into it before looking for those fields. Best-effort: capture
-    // evidence of what's actually there rather than guessing field labels.
-    if (params.yearFrom > 0 || params.yearTo > 0 || params.mileageMax > 0) {
-      const vehiclesCategory = page.getByText(/^vehicles$/i).first();
-      const count = await vehiclesCategory.count().catch(() => 0);
-      const allMatches = page.getByText(/^vehicles$/i);
-      const matchCount = await allMatches.count().catch(() => 0);
-      console.log(`Found ${matchCount} element(s) matching "Vehicles" text; using the first`);
-
-      const visible = count > 0
-        ? await vehiclesCategory
-            .waitFor({ state: "visible", timeout: 3000 })
-            .then(() => true)
-            .catch(() => false)
-        : false;
-
-      let clicked = false;
-      if (visible) {
-        const box = await vehiclesCategory.boundingBox().catch(() => null);
-        console.log("Vehicles category link bounding box:", JSON.stringify(box));
-
-        clicked = await vehiclesCategory
-          .click({ timeout: 3000 })
-          .then(() => true)
-          .catch(async (error) => {
-            console.warn("Vehicles category link found but click failed/timed out:", error);
-            await page
-              .screenshot({ path: "/tmp/fb-vehicles-category-click-fail.png", timeout: 10000 })
-              .catch((screenshotError) =>
-                console.warn("Debug screenshot also failed:", screenshotError)
-              );
-            return false;
-          });
-      }
-
-      if (clicked) {
-        await page.waitForLoadState("networkidle").catch(() => {});
-        await randomDelay(1500, 2500);
-
-        await page
-          .screenshot({ path: "/tmp/fb-vehicles-category.png", timeout: 10000 })
-          .catch((error) => console.warn("Vehicles category screenshot failed:", error));
-
-        const sidebarLabels = await page
-          .locator('label, [role="heading"], h2, h3')
-          .allInnerTexts()
-          .catch(() => []);
-        console.log(
-          "Vehicles category sidebar labels/headings:",
-          JSON.stringify(sidebarLabels)
-        );
-      } else {
-        console.warn(
-          "Vehicles category link not found/clickable — year/mileage fields likely unavailable in this view"
-        );
-      }
-    }
+    // Year/mileage fields aren't in the generic keyword-search sidebar, and
+    // switching into Facebook's "Vehicles" category to look for them lands on
+    // the unfiltered category browse page — discarding the make/model search
+    // query entirely and leaking unrelated listings into the results. Year,
+    // mileage, price, make, and model are all enforced afterwards in
+    // extractListings instead, so no UI-level filter fields are needed here.
 
     if (params.priceMin > 0) {
       await fillFilterField(page, ["Min price", "Minimum price", "Price from"], params.priceMin);
@@ -455,6 +403,8 @@ async function extractListings(
         skipped++;
         continue;
       }
+
+      if (!listingMatchesSearch(item.title, params.make, params.model)) continue;
 
       const price = parsePrice(item.priceText);
       const mileage = parseMileage(item.title + " " + item.locationText);
