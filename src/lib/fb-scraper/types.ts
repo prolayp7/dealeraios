@@ -41,6 +41,7 @@ export class ScraperError extends Error {
       | "TWO_FACTOR"
       | "BLOCKED"
       | "MULTILOGIN"
+      | "GOLOGIN"
       | "SCRAPE"
       | "PUBLISH"
   ) {
