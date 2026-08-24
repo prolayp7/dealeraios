@@ -4,9 +4,26 @@ import { decryptSecret } from "./crypto";
 
 export interface RotationAccount {
   id: string;
-  multiloginProfileId: string;
-  multiloginFolderId: string;
+  provider: "multilogin" | "gologin";
+  multiloginProfileId?: string;
+  multiloginFolderId?: string;
+  gologinProfileId?: string;
   cookies: Cookie[];
+}
+
+export interface RotationAccountRow {
+  id: string;
+  provider: "multilogin" | "gologin";
+  encrypted_cookies: string | null;
+  multilogin_profile_id: string | null;
+  multilogin_folder_id: string | null;
+  gologin_profile_id: string | null;
+}
+
+export function hasUsableProfile(row: RotationAccountRow): boolean {
+  if (!row.encrypted_cookies) return false;
+  if (row.provider === "gologin") return !!row.gologin_profile_id;
+  return !!row.multilogin_profile_id && !!row.multilogin_folder_id;
 }
 
 export function pickNextAccount(
@@ -30,7 +47,9 @@ export async function getNextActiveAccount(
 ): Promise<RotationAccount | null> {
   const { data, error } = await supabase
     .from("marketplace_accounts")
-    .select("id, encrypted_cookies, multilogin_profile_id, multilogin_folder_id, last_used_at")
+    .select(
+      "id, encrypted_cookies, provider, multilogin_profile_id, multilogin_folder_id, gologin_profile_id, last_used_at"
+    )
     .eq("dealership_id", dealershipId)
     .eq("status", "active");
 
@@ -40,18 +59,18 @@ export async function getNextActiveAccount(
   const nextId = pickNextAccount(
     data.map((row) => ({ id: row.id, last_used_at: row.last_used_at }))
   );
-  const chosen = data.find((row) => row.id === nextId);
+  const chosen = data.find((row) => row.id === nextId) as RotationAccountRow | undefined;
 
-  if (!chosen || !chosen.encrypted_cookies || !chosen.multilogin_profile_id || !chosen.multilogin_folder_id) {
-    return null;
-  }
+  if (!chosen || !hasUsableProfile(chosen)) return null;
 
-  const cookies = JSON.parse(decryptSecret(chosen.encrypted_cookies, chosen.id)) as Cookie[];
+  const cookies = JSON.parse(decryptSecret(chosen.encrypted_cookies!, chosen.id)) as Cookie[];
 
   return {
     id: chosen.id,
-    multiloginProfileId: chosen.multilogin_profile_id,
-    multiloginFolderId: chosen.multilogin_folder_id,
+    provider: chosen.provider,
+    multiloginProfileId: chosen.multilogin_profile_id ?? undefined,
+    multiloginFolderId: chosen.multilogin_folder_id ?? undefined,
+    gologinProfileId: chosen.gologin_profile_id ?? undefined,
     cookies,
   };
 }

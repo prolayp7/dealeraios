@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { pickNextAccount } from "./rotation";
+import { hasUsableProfile, pickNextAccount } from "./rotation";
 
 describe("pickNextAccount", () => {
   test("returns null for an empty pool", () => {
@@ -29,5 +29,40 @@ describe("pickNextAccount", () => {
       { id: "b", last_used_at: null },
     ]);
     expect(result).toBe("a");
+  });
+});
+
+describe("hasUsableProfile", () => {
+  const base = {
+    id: "test-id",
+    encrypted_cookies: "iv:tag:ciphertext",
+    multilogin_profile_id: null as string | null,
+    multilogin_folder_id: null as string | null,
+    gologin_profile_id: null as string | null,
+  };
+
+  test("multilogin row is usable only with both profile and folder id", () => {
+    expect(
+      hasUsableProfile({ ...base, provider: "multilogin", multilogin_profile_id: "p1", multilogin_folder_id: "f1" })
+    ).toBe(true);
+    expect(
+      hasUsableProfile({ ...base, provider: "multilogin", multilogin_profile_id: "p1" })
+    ).toBe(false);
+  });
+
+  test("gologin row is usable with only gologin_profile_id", () => {
+    expect(hasUsableProfile({ ...base, provider: "gologin", gologin_profile_id: "g1" })).toBe(true);
+    expect(hasUsableProfile({ ...base, provider: "gologin" })).toBe(false);
+  });
+
+  test("missing cookies makes any provider ineligible", () => {
+    expect(
+      hasUsableProfile({
+        ...base,
+        encrypted_cookies: null,
+        provider: "gologin",
+        gologin_profile_id: "g1",
+      })
+    ).toBe(false);
   });
 });
