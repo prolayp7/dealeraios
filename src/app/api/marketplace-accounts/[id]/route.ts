@@ -25,7 +25,6 @@ export async function PATCH(request: Request, props: { params: Promise<{ id: str
     if (!validation.ok) {
       return NextResponse.json({ error: validation.error }, { status: 400 });
     }
-    const { runLoginJob } = await import("@/lib/marketplace-accounts/login-job");
 
     const { label, cookies } = validation.value;
 
@@ -51,7 +50,22 @@ export async function PATCH(request: Request, props: { params: Promise<{ id: str
 
     if (cookies !== undefined) {
       try {
-        await runLoginJob(supabase, params.id);
+        const { data: existing, error: providerError } = await supabase
+          .from("marketplace_accounts")
+          .select("provider")
+          .eq("id", params.id)
+          .single();
+        if (providerError) throw providerError;
+
+        if (existing.provider === "gologin") {
+          const { runGologinLoginJob } = await import(
+            "@/lib/marketplace-accounts/login-job-gologin"
+          );
+          await runGologinLoginJob(supabase, params.id);
+        } else {
+          const { runLoginJob } = await import("@/lib/marketplace-accounts/login-job");
+          await runLoginJob(supabase, params.id);
+        }
       } catch (err) {
         // Mirrors Task 9's POST fix: without this, a runLoginJob failure
         // here would leave the row stuck at status "pending" forever, since
@@ -100,7 +114,7 @@ export async function DELETE(_request: Request, props: { params: Promise<{ id: s
 
     const { data: existing, error: fetchError } = await supabase
       .from("marketplace_accounts")
-      .select("multilogin_profile_id")
+      .select("provider, multilogin_profile_id, gologin_profile_id")
       .eq("id", params.id)
       .eq("dealership_id", session.dealershipId)
       .single();
@@ -109,9 +123,15 @@ export async function DELETE(_request: Request, props: { params: Promise<{ id: s
       return NextResponse.json({ error: "Account not found" }, { status: 404 });
     }
 
-    const { deleteMultiloginProfile } = await import("@/lib/fb-scraper/multilogin");
-
-    if (existing.multilogin_profile_id) {
+    if (existing.provider === "gologin") {
+      if (existing.gologin_profile_id) {
+        const { deleteGologinProfile } = await import("@/lib/gologin/client");
+        await deleteGologinProfile(existing.gologin_profile_id).catch((err) =>
+          console.error("Failed to delete GoLogin profile (continuing):", err)
+        );
+      }
+    } else if (existing.multilogin_profile_id) {
+      const { deleteMultiloginProfile } = await import("@/lib/fb-scraper/multilogin");
       await deleteMultiloginProfile(existing.multilogin_profile_id).catch((err) =>
         console.error("Failed to delete Multilogin profile (continuing):", err)
       );
