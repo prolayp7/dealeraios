@@ -16,7 +16,7 @@ describe("validateCreateAccountBody", () => {
     });
     expect(result).toEqual({
       ok: true,
-      value: { label: "Main Account", cookies: [validCookie] },
+      value: { label: "Main Account", cookies: [validCookie], provider: "multilogin" },
     });
   });
 
@@ -51,6 +51,54 @@ describe("validateCreateAccountBody", () => {
     expect(result).toEqual({
       ok: false,
       error: "each cookie must have name, value, domain, and path",
+    });
+  });
+
+  test("defaults provider to multilogin when absent", () => {
+    const result = validateCreateAccountBody({ label: "x", cookies: [validCookie] });
+    expect(result.ok && result.value.provider).toBe("multilogin");
+  });
+
+  test("accepts an explicit gologin provider", () => {
+    const result = validateCreateAccountBody({
+      label: "x",
+      cookies: [validCookie],
+      provider: "gologin",
+    });
+    expect(result.ok && result.value.provider).toBe("gologin");
+  });
+
+  test("rejects an invalid provider value", () => {
+    const result = validateCreateAccountBody({
+      label: "x",
+      cookies: [validCookie],
+      provider: "not-a-provider",
+    });
+    expect(result).toEqual({
+      ok: false,
+      error: "provider must be 'multilogin' or 'gologin'",
+    });
+  });
+
+  test("accepts a gologinProfileId escape hatch", () => {
+    const result = validateCreateAccountBody({
+      label: "x",
+      cookies: [validCookie],
+      provider: "gologin",
+      gologinProfileId: "  prof_123  ",
+    });
+    expect(result.ok && result.value.gologinProfileId).toBe("prof_123");
+  });
+
+  test("rejects a blank gologinProfileId", () => {
+    const result = validateCreateAccountBody({
+      label: "x",
+      cookies: [validCookie],
+      gologinProfileId: "   ",
+    });
+    expect(result).toEqual({
+      ok: false,
+      error: "gologinProfileId must be a non-empty string when provided",
     });
   });
 });

@@ -43,7 +43,9 @@ export function validateCreateAccountBody(
 ): ValidationResult<{
   label: string;
   cookies: BrowserExtensionCookie[];
+  provider: "multilogin" | "gologin";
   multiloginProfileId?: string;
+  gologinProfileId?: string;
 }> {
   if (!isPlainObject(body)) {
     return { ok: false, error: "label is required" };
@@ -57,9 +59,24 @@ export function validateCreateAccountBody(
   const cookiesResult = validateCookiesField(body.cookies);
   if (!cookiesResult.ok) return cookiesResult;
 
-  const value: { label: string; cookies: BrowserExtensionCookie[]; multiloginProfileId?: string } = {
+  let provider: "multilogin" | "gologin" = "multilogin";
+  if ("provider" in body && body.provider !== undefined) {
+    if (body.provider !== "multilogin" && body.provider !== "gologin") {
+      return { ok: false, error: "provider must be 'multilogin' or 'gologin'" };
+    }
+    provider = body.provider;
+  }
+
+  const value: {
+    label: string;
+    cookies: BrowserExtensionCookie[];
+    provider: "multilogin" | "gologin";
+    multiloginProfileId?: string;
+    gologinProfileId?: string;
+  } = {
     label: rawLabel.trim(),
     cookies: cookiesResult.value,
+    provider,
   };
 
   // Optional escape hatch: skip Multilogin's (currently unreliable) profile-create
@@ -70,6 +87,15 @@ export function validateCreateAccountBody(
       return { ok: false, error: "multiloginProfileId must be a non-empty string when provided" };
     }
     value.multiloginProfileId = body.multiloginProfileId.trim();
+  }
+
+  // Same escape hatch for GoLogin: attach an already-created profile instead
+  // of calling createGologinProfile.
+  if ("gologinProfileId" in body && body.gologinProfileId !== undefined && body.gologinProfileId !== "") {
+    if (typeof body.gologinProfileId !== "string" || body.gologinProfileId.trim().length === 0) {
+      return { ok: false, error: "gologinProfileId must be a non-empty string when provided" };
+    }
+    value.gologinProfileId = body.gologinProfileId.trim();
   }
 
   return { ok: true, value };
