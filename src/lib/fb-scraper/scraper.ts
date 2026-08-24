@@ -661,10 +661,7 @@ async function getBrowserContext(browser: Browser): Promise<{
 }> {
   const context = browser.contexts()[0];
   if (!context) {
-    throw new ScraperError(
-      "No browser context from Multilogin profile",
-      "MULTILOGIN"
-    );
+    throw new ScraperError("No browser context from browser session", "SCRAPE");
   }
 
   const page = context.pages()[0] ?? (await context.newPage());
@@ -684,12 +681,14 @@ export async function scrapeFacebookMarketplace(
   const supabase = await createServerClient();
 
   let account: Awaited<ReturnType<typeof getNextActiveAccount>> = null;
-  let config: Awaited<ReturnType<typeof getMultiloginConfig>>;
+  let config: Awaited<ReturnType<typeof getMultiloginConfig>> | null = null;
   try {
     account = await getNextActiveAccount(supabase, dealershipId);
-    config = account
-      ? await getMultiloginConfigForProfile(account.multiloginProfileId, account.multiloginFolderId)
-      : await getMultiloginConfig();
+    if (!account || account.provider === "multilogin") {
+      config = account
+        ? await getMultiloginConfigForProfile(account.multiloginProfileId!, account.multiloginFolderId!)
+        : await getMultiloginConfig();
+    }
   } catch (error) {
     console.error("Marketplace account rotation failed, falling back to env-var config:", error);
     account = null;
@@ -699,10 +698,18 @@ export async function scrapeFacebookMarketplace(
   let browser: Browser | null = null;
 
   try {
-    const session = await startMultiloginProfile(config);
-    await randomDelay(2000, 3000);
-
-    browser = await connectMultiloginBrowser(session);
+    if (account?.provider === "gologin") {
+      const { connectGologinCloudBrowser } = await import("@/lib/gologin/cloud-browser");
+      const apiToken = process.env.GOLOGIN_API_TOKEN;
+      if (!apiToken) {
+        throw new ScraperError("Missing GOLOGIN_API_TOKEN in environment", "CONFIG");
+      }
+      browser = await connectGologinCloudBrowser(account.gologinProfileId!, apiToken);
+    } else {
+      const session = await startMultiloginProfile(config!);
+      await randomDelay(2000, 3000);
+      browser = await connectMultiloginBrowser(session);
+    }
 
     const { page } = await getBrowserContext(browser);
     const searchResult = await scrapeWithPage(page, params, false, account?.cookies);
@@ -732,7 +739,9 @@ export async function scrapeFacebookMarketplace(
         console.error("Error closing browser:", error);
       }
     }
-    await stopMultiloginProfile(config);
+    if (account?.provider !== "gologin" && config) {
+      await stopMultiloginProfile(config);
+    }
   }
 }
 
