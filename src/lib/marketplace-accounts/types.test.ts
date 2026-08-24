@@ -13,6 +13,8 @@ const fullRow: MarketplaceAccountRow = {
   encrypted_cookies: "iv:tag:ciphertext",
   multilogin_profile_id: "profile-123",
   multilogin_folder_id: "folder-456",
+  provider: "multilogin",
+  gologin_profile_id: null,
   status: "active",
   status_message: null,
   last_login_at: "2026-07-31T10:00:00Z",
@@ -38,5 +40,7 @@ describe("toSafeAccount", () => {
     expect(safe).not.toHaveProperty("dealership_id");
     expect(safe).not.toHaveProperty("multilogin_profile_id");
     expect(safe).not.toHaveProperty("multilogin_folder_id");
+    expect(safe).not.toHaveProperty("provider");
+    expect(safe).not.toHaveProperty("gologin_profile_id");
   });
 });

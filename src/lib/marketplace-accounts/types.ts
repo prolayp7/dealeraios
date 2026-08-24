@@ -10,6 +10,8 @@ export interface MarketplaceAccountRow {
   encrypted_cookies: string | null;
   multilogin_profile_id: string | null;
   multilogin_folder_id: string | null;
+  provider: "multilogin" | "gologin";
+  gologin_profile_id: string | null;
   status: "pending" | "active" | "blocked" | "error";
   status_message: string | null;
   last_login_at: string | null;
