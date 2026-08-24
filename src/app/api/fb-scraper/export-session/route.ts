@@ -73,6 +73,7 @@ export async function POST() {
         TWO_FACTOR: 403,
         BLOCKED: 429,
         MULTILOGIN: 502,
+        GOLOGIN: 502,
         SCRAPE: 500,
         PUBLISH: 500,
       };
