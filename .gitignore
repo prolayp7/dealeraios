@@ -41,6 +41,7 @@ docs/*
 .git-credentials.local
 deploy.sh
 creds.txt
+cred2.txt
 .superpowers/
 .claude/
 
