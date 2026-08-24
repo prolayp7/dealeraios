@@ -50,65 +50,105 @@ export async function POST(request: Request) {
     if (!validation.ok) {
       return NextResponse.json({ error: validation.error }, { status: 400 });
     }
-    const { label, cookies, multiloginProfileId } = validation.value;
-
-    const folderId = process.env.MULTILOGIN_FOLDER_ID;
-    if (!folderId) {
-      return NextResponse.json(
-        { error: "Server is missing MULTILOGIN_FOLDER_ID" },
-        { status: 500 }
-      );
-    }
-
-    const { createMultiloginProfile, deleteMultiloginProfile } = await import(
-      "@/lib/fb-scraper/multilogin"
-    );
-    const { runLoginJob } = await import("@/lib/marketplace-accounts/login-job");
-
-    // Escape hatch: if the caller already created a profile by hand (e.g. via
-    // the Multilogin desktop app, when the cloud create-profile API is down),
-    // use it directly and skip our own create call — and skip deleting it on
-    // failure too, since we didn't create it and shouldn't destroy something
-    // the operator explicitly set up.
-    const weCreatedProfile = !multiloginProfileId;
-    const profileId = multiloginProfileId ?? (await createMultiloginProfile(folderId, label));
+    const { label, cookies, provider, multiloginProfileId, gologinProfileId } = validation.value;
 
     // Generated here (rather than left to the table's DEFAULT) because
     // encryptSecret's AAD context must be the row's id, and that id has to
     // exist before the row does — a client-generated UUID is a normal
     // Postgres insert pattern and overrides the DEFAULT cleanly.
     const accountId = randomUUID();
+    const encryptedCookies = encryptSecret(JSON.stringify(mapExtensionCookies(cookies)), accountId);
+
+    let insertRow: Record<string, unknown>;
+    let weCreatedProfile = false;
+    let profileId: string;
+    let cleanupOnFailure: (() => Promise<void>) | null = null;
+
+    if (provider === "gologin") {
+      const { createGologinProfile, deleteGologinProfile } = await import("@/lib/gologin/client");
+
+      weCreatedProfile = !gologinProfileId;
+      profileId = gologinProfileId ?? (await createGologinProfile(label));
+      if (weCreatedProfile) {
+        cleanupOnFailure = () =>
+          deleteGologinProfile(profileId).catch((cleanupErr) =>
+            console.error("Failed to clean up orphaned GoLogin profile:", cleanupErr)
+          );
+      }
+
+      insertRow = {
+        id: accountId,
+        dealership_id: session.dealershipId,
+        label,
+        provider: "gologin",
+        auth_method: "cookies",
+        encrypted_cookies: encryptedCookies,
+        gologin_profile_id: profileId,
+        status: "pending",
+      };
+    } else {
+      const folderId = process.env.MULTILOGIN_FOLDER_ID;
+      if (!folderId) {
+        return NextResponse.json(
+          { error: "Server is missing MULTILOGIN_FOLDER_ID" },
+          { status: 500 }
+        );
+      }
+
+      const { createMultiloginProfile, deleteMultiloginProfile } = await import(
+        "@/lib/fb-scraper/multilogin"
+      );
+
+      // Escape hatch: if the caller already created a profile by hand (e.g. via
+      // the Multilogin desktop app, when the cloud create-profile API is down),
+      // use it directly and skip our own create call — and skip deleting it on
+      // failure too, since we didn't create it and shouldn't destroy something
+      // the operator explicitly set up.
+      weCreatedProfile = !multiloginProfileId;
+      profileId = multiloginProfileId ?? (await createMultiloginProfile(folderId, label));
+      if (weCreatedProfile) {
+        cleanupOnFailure = () =>
+          deleteMultiloginProfile(profileId).catch((cleanupErr) =>
+            console.error("Failed to clean up orphaned Multilogin profile:", cleanupErr)
+          );
+      }
+
+      insertRow = {
+        id: accountId,
+        dealership_id: session.dealershipId,
+        label,
+        provider: "multilogin",
+        auth_method: "cookies",
+        encrypted_cookies: encryptedCookies,
+        multilogin_profile_id: profileId,
+        multilogin_folder_id: folderId,
+        status: "pending",
+      };
+    }
 
     let inserted: { id: string };
     try {
       const { data, error: insertError } = await supabase
         .from("marketplace_accounts")
-        .insert({
-          id: accountId,
-          dealership_id: session.dealershipId,
-          label,
-          auth_method: "cookies",
-          encrypted_cookies: encryptSecret(JSON.stringify(mapExtensionCookies(cookies)), accountId),
-          multilogin_profile_id: profileId,
-          multilogin_folder_id: folderId,
-          status: "pending",
-        })
+        .insert(insertRow)
         .select()
         .single();
 
       if (insertError) throw insertError;
       inserted = data;
     } catch (err) {
-      if (weCreatedProfile) {
-        await deleteMultiloginProfile(profileId).catch((cleanupErr) =>
-          console.error("Failed to clean up orphaned Multilogin profile:", cleanupErr)
-        );
-      }
+      if (cleanupOnFailure) await cleanupOnFailure();
       throw err;
     }
 
     try {
-      await runLoginJob(supabase, inserted.id);
+      if (provider === "gologin") {
+        const { runGologinLoginJob } = await import("@/lib/marketplace-accounts/login-job-gologin");
+        await runGologinLoginJob(supabase, inserted.id);
+      } else {
+        const { runLoginJob } = await import("@/lib/marketplace-accounts/login-job");
+        await runLoginJob(supabase, inserted.id);
+      }
     } catch (err) {
       await supabase
         .from("marketplace_accounts")
