@@ -12,12 +12,18 @@ interface SafeMarketplaceAccount {
   id: string;
   label: string;
   platform: string;
+  provider: "multilogin" | "gologin";
   status: "pending" | "active" | "blocked" | "error";
   status_message: string | null;
   last_login_at: string | null;
   last_used_at: string | null;
   created_at: string;
 }
+
+const PROVIDER_LABELS: Record<SafeMarketplaceAccount["provider"], string> = {
+  multilogin: "Multilogin",
+  gologin: "GoLogin",
+};
 
 function relativeTime(iso: string | null): string {
   if (!iso) return "never";
@@ -49,7 +55,9 @@ export function MarketplaceAccountsPanel() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [label, setLabel] = useState("");
   const [cookiesJson, setCookiesJson] = useState("");
+  const [provider, setProvider] = useState<"multilogin" | "gologin">("multilogin");
   const [multiloginProfileId, setMultiloginProfileId] = useState("");
+  const [gologinProfileId, setGologinProfileId] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [retryingId, setRetryingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -71,7 +79,9 @@ export function MarketplaceAccountsPanel() {
     setEditingId(null);
     setLabel("");
     setCookiesJson("");
+    setProvider("multilogin");
     setMultiloginProfileId("");
+    setGologinProfileId("");
   };
 
   const startEdit = (account: SafeMarketplaceAccount) => {
@@ -99,7 +109,13 @@ export function MarketplaceAccountsPanel() {
         body: JSON.stringify({
           label,
           cookies,
-          ...(multiloginProfileId.trim() ? { multiloginProfileId: multiloginProfileId.trim() } : {}),
+          provider,
+          ...(provider === "multilogin" && multiloginProfileId.trim()
+            ? { multiloginProfileId: multiloginProfileId.trim() }
+            : {}),
+          ...(provider === "gologin" && gologinProfileId.trim()
+            ? { gologinProfileId: gologinProfileId.trim() }
+            : {}),
         }),
       });
       const data = await res.json();
@@ -206,6 +222,20 @@ export function MarketplaceAccountsPanel() {
         </div>
         {!editingId && (
           <div>
+            <Label htmlFor="account-provider">Provider</Label>
+            <select
+              id="account-provider"
+              className="flex h-10 w-full rounded-md border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100 ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500"
+              value={provider}
+              onChange={(e) => setProvider(e.target.value as "multilogin" | "gologin")}
+            >
+              <option value="multilogin">Multilogin</option>
+              <option value="gologin">GoLogin</option>
+            </select>
+          </div>
+        )}
+        {!editingId && provider === "multilogin" && (
+          <div>
             <Label htmlFor="account-profile-id">
               Existing Multilogin Profile ID (optional)
             </Label>
@@ -214,6 +244,19 @@ export function MarketplaceAccountsPanel() {
               placeholder="Leave blank to auto-create — or paste an ID from a profile you made in the Multilogin app"
               value={multiloginProfileId}
               onChange={(e) => setMultiloginProfileId(e.target.value)}
+            />
+          </div>
+        )}
+        {!editingId && provider === "gologin" && (
+          <div>
+            <Label htmlFor="account-gologin-profile-id">
+              Existing GoLogin Profile ID (optional)
+            </Label>
+            <Input
+              id="account-gologin-profile-id"
+              placeholder="Leave blank to auto-create — or paste an ID from a profile in your GoLogin dashboard"
+              value={gologinProfileId}
+              onChange={(e) => setGologinProfileId(e.target.value)}
             />
           </div>
         )}
@@ -262,6 +305,7 @@ export function MarketplaceAccountsPanel() {
             <div>
               <div className="flex items-center gap-2">
                 <span className="text-sm text-slate-200">{account.label}</span>
+                <span className="text-xs text-slate-500">{PROVIDER_LABELS[account.provider]}</span>
                 <span className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold ${statusBadgeClass(account.status)}`}>
                   {account.status}
                 </span>

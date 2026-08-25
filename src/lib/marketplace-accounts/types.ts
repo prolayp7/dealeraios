@@ -24,6 +24,7 @@ export interface SafeMarketplaceAccount {
   id: string;
   label: string;
   platform: string;
+  provider: MarketplaceAccountRow["provider"];
   status: MarketplaceAccountRow["status"];
   status_message: string | null;
   last_login_at: string | null;
@@ -36,6 +37,7 @@ export function toSafeAccount(row: MarketplaceAccountRow): SafeMarketplaceAccoun
     id: row.id,
     label: row.label,
     platform: row.platform,
+    provider: row.provider,
     status: row.status,
     status_message: row.status_message,
     last_login_at: row.last_login_at,

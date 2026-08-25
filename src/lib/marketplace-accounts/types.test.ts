@@ -30,6 +30,7 @@ describe("toSafeAccount", () => {
       id: "acc-1",
       label: "23 Motorsports — Main",
       platform: "facebook",
+      provider: "multilogin",
       status: "active",
       status_message: null,
       last_login_at: "2026-07-31T10:00:00Z",
@@ -40,7 +41,6 @@ describe("toSafeAccount", () => {
     expect(safe).not.toHaveProperty("dealership_id");
     expect(safe).not.toHaveProperty("multilogin_profile_id");
     expect(safe).not.toHaveProperty("multilogin_folder_id");
-    expect(safe).not.toHaveProperty("provider");
     expect(safe).not.toHaveProperty("gologin_profile_id");
   });
 });
