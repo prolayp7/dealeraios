@@ -13,6 +13,12 @@ function isPublicPath(pathname: string): boolean {
   );
 }
 
+function hasSupabaseSessionCookie(request: NextRequest): boolean {
+  return request.cookies
+    .getAll()
+    .some((c) => c.name.startsWith("sb-") && c.name.includes("-auth-token"));
+}
+
 export async function middleware(request: NextRequest) {
   let response = NextResponse.next({ request });
 
@@ -48,11 +54,20 @@ export async function middleware(request: NextRequest) {
     ({ data: { user }, error: getUserError } = await supabase.auth.getUser());
   }
 
-  // Still unresolved after the retry: we genuinely don't know if this user
-  // is authenticated, so don't bounce a possibly-valid session to /login —
-  // let the request through un-gated rather than fail closed on our own
-  // connectivity issue.
-  if (getUserError?.name === "AuthRetryableFetchError") {
+  // Still unresolved after the retry. Only extend the benefit of the doubt
+  // when a session cookie is actually present (checked locally — no network
+  // call, so this isn't itself subject to the same flakiness): a request
+  // with a plausible-but-unverifiable cookie might be a valid session we
+  // failed to confirm over our own connectivity issue, so let it through
+  // rather than bounce it. A request with NO cookie at all is unambiguous
+  // regardless of network state and falls through to the normal redirect
+  // below. Either way this never grants real data access on its own — every
+  // /api/* route re-verifies independently via getSessionDealership() (which
+  // fails closed on any getUser() error, network or otherwise), and reads
+  // that skip that check rely on Postgres RLS, which verifies the JWT
+  // locally and doesn't depend on this server's network to Supabase's Auth
+  // API at all.
+  if (getUserError?.name === "AuthRetryableFetchError" && hasSupabaseSessionCookie(request)) {
     return response;
   }
 
