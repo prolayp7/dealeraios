@@ -37,9 +37,24 @@ export async function middleware(request: NextRequest) {
     }
   );
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  let { data: { user }, error: getUserError } = await supabase.auth.getUser();
+
+  // getUser() calls out to Supabase's Auth server on every request. A
+  // transient network hiccup reaching it surfaces as AuthRetryableFetchError
+  // — that means "couldn't verify," not "no session" — so one retry before
+  // falling back, same distinction Supabase's own client makes internally
+  // for retryable vs. terminal auth errors.
+  if (getUserError?.name === "AuthRetryableFetchError") {
+    ({ data: { user }, error: getUserError } = await supabase.auth.getUser());
+  }
+
+  // Still unresolved after the retry: we genuinely don't know if this user
+  // is authenticated, so don't bounce a possibly-valid session to /login —
+  // let the request through un-gated rather than fail closed on our own
+  // connectivity issue.
+  if (getUserError?.name === "AuthRetryableFetchError") {
+    return response;
+  }
 
   if (!user && !isPublicPath(request.nextUrl.pathname)) {
     const redirectUrl = new URL("/login", request.url);
