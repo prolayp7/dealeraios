@@ -20,7 +20,19 @@ export async function createGologinProfile(label: string): Promise<string> {
       "Content-Type": "application/json",
       Accept: "application/json",
     },
-    body: JSON.stringify({ name: label, os: "lin" }),
+    body: JSON.stringify({
+      name: label,
+      os: "lin",
+      browserType: "chrome",
+      navigator: {
+        userAgent:
+          "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36",
+        resolution: "1920x1080",
+        language: "en-US",
+        platform: "Linux",
+      },
+      proxy: { mode: "none" },
+    }),
   });
 
   const rawText = await response.text();
@@ -38,12 +50,9 @@ export async function createGologinProfile(label: string): Promise<string> {
     );
   }
 
-  // GoLogin's create-profile response shape has been observed to vary across
-  // API versions (flat `id` vs nested under `data`) — same defensive
-  // extraction pattern as createMultiloginProfile in multilogin.ts. Confirm
-  // the exact field name against the linked Postman collection
-  // (documenter.getpostman.com/view/21126834/Uz5GnvaL) the first time this
-  // runs against the real API.
+  // Verified against the live API (2026-08-25): response is a flat object
+  // with `id` at the top level. Kept the `data.id`/`profileId` fallbacks
+  // defensively, same pattern as createMultiloginProfile in multilogin.ts.
   const data = body?.data as Record<string, unknown> | undefined;
   const profileId = body?.id ?? data?.id ?? body?.profileId;
   if (!profileId || typeof profileId !== "string") {
