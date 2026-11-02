@@ -21,21 +21,33 @@ export default function LoginPage() {
     setError(null);
     setLoading(true);
 
-    const supabase = createBrowserClient();
-    const { error: signInError } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
+    try {
+      const supabase = createBrowserClient();
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
 
-    setLoading(false);
+      if (signInError) {
+        setError(
+          signInError.message === "Failed to fetch"
+            ? "Unable to reach the authentication service. Check your connection and try again."
+            : signInError.message
+        );
+        return;
+      }
 
-    if (signInError) {
-      setError(signInError.message);
-      return;
+      router.push("/dashboard");
+      router.refresh();
+    } catch (cause) {
+      setError(
+        cause instanceof TypeError && cause.message === "Failed to fetch"
+          ? "Unable to reach the authentication service. Check your connection and try again."
+          : "Unable to sign in right now. Please try again."
+      );
+    } finally {
+      setLoading(false);
     }
-
-    router.push("/dashboard");
-    router.refresh();
   }
 
   return (
@@ -73,7 +85,11 @@ export default function LoginPage() {
               onChange={(e) => setPassword(e.target.value)}
             />
           </div>
-          {error && <p className="text-sm text-danger">{error}</p>}
+          {error && (
+            <p role="alert" className="text-sm text-danger">
+              {error}
+            </p>
+          )}
           <Button type="submit" className="w-full" disabled={loading}>
             {loading ? "Signing in..." : "Sign in"}
           </Button>

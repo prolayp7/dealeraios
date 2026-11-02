@@ -19,7 +19,7 @@ function hasSupabaseSessionCookie(request: NextRequest): boolean {
     .some((c) => c.name.startsWith("sb-") && c.name.includes("-auth-token"));
 }
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   let response = NextResponse.next({ request });
 
   const supabase = createServerClient(
